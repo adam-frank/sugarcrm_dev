@@ -98,6 +98,7 @@ function make_sugar_config(&$sugar_config)
 	global $import_max_execution_time;
 	global $list_max_entries_per_subpanel;
 	global $passwordsetting;
+	global $campaign_max_soft_bounces;
 
 	// assumes the following variables must be set:
 	// $dbconfig, $dbconfigoption, $cache_dir,  $session_dir, $site_URL, $upload_dir
@@ -198,6 +199,7 @@ function make_sugar_config(&$sugar_config)
 	'default_navigation_paradigm' => empty($navigation_paradigm) ? 'gm' : $navigation_paradigm,
     'default_call_status' => 'Planned',
 	'js_lang_version' => 1,
+	'campaign_max_soft_bounces' => 6,
 	'passwordsetting' => empty($passwordsetting) ? array (
 	    'SystemGeneratedPasswordON' => '',
 	    'generatepasswordtmpl' => '',
@@ -334,6 +336,7 @@ function get_sugar_config_defaults() {
 	'verify_client_ip' => true,
 	'js_custom_version' => '',
 	'js_lang_version' => 1,
+	'campaign_max_soft_bounces' => 6,
         'lead_conv_activity_opt' => 'donothing',
 	'default_number_grouping_seperator' => ',',
 	'default_decimal_seperator' => '.',
