@@ -59,6 +59,7 @@ class EmailMan extends SugarBean{
 	var $object_name = "EmailMan";
 	var $module_dir = "EmailMan";
 	var $send_attempts;
+	var $max_send_attempts;
 	var $related_id;
 	var $related_type;
 	var $test=false;
@@ -261,11 +262,17 @@ class EmailMan extends SugarBean{
 
 	function set_as_sent($email_address, $delete= true,$email_id=null, $email_type=null,$activity_type=null){
 
-		global $timedate;
+		global $timedate, $sugar_config;
 
 		$this->send_attempts++;
 		$this->id = (int)$this->id;
-		if($delete || $this->send_attempts > 5){
+		
+		if (!is_int($this->max_send_attempts))
+		{
+			$this->max_send_attempts = (is_int($sugar_config['campaign_max_soft_bounces'])) ? $sugar_config['campaign_max_soft_bounces'] : 6;	
+		}
+
+		if($delete || $this->send_attempts >= $this->max_send_attempts){
 
 			//create new campaign log record.
 
