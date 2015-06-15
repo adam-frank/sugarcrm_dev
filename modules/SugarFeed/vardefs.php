@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -124,11 +124,15 @@ $dictionary['SugarFeed'] = array(
     ),
 
     'indices' => array (
-        array('name' => 'sgrfeed_date', 
+        array('name' => 'sgrfeed_date',
               'type'=>'index',
               'fields'=>array('date_entered',
                               'deleted',
                   )),
+        array('name' =>'idx_sgrfeed_rmod_rid_date',
+              'type' =>'index',
+              'fields'=>array('related_module', 'related_id', 'date_entered')
+        ),
     ),
 
 	'optimistic_lock'=>true,

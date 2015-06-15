@@ -2,7 +2,7 @@
 
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -63,10 +63,12 @@ class Bug51371Test extends Sugar_PHPUnit_Framework_TestCase
             // blowfish
             $checks[] = array("my passw0rd", '$2a$07$usesomesillystringforeETvnK0/TgBVIVHViQjGDve4qlnRzeWS');
        }
+       /* Temporarily skip this test due to a php bug on StackDB2 running PHP Version 5.3.8-ZS5.5.0
        if(defined('CRYPT_SHA256') && constant('CRYPT_SHA256')) {
             // sha-256
             $checks[] = array("my passw0rd", '$5$rounds=5000$usesomesillystri$aKwd34p0LSvMZdW1LolZOPCCsx1mYdTynQn9ZrWrO87');
        }
+       */
        return $checks;
     }
 

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -361,6 +361,10 @@ class Sugarpdf extends TCPDF
             // need to adjust the current page number
             // so the following output will not overlap the previous output
             if ($this->getNumPages() != $this->getPage()) {
+                if (!empty($this->currentY)) {
+                    $this->y = $this->currentY;
+                    $this->currentY = 0;
+                }
                 $this->setPage($this->getNumPages());
             }
             $firstcell = true;
@@ -449,8 +453,22 @@ class Sugarpdf extends TCPDF
             }
             $html.=$this->wrap("tr", $line, $options["header"]);
         }
+        $even = true;
         foreach ($item as $k=>$v){
+            $even = !$even;
             $line="";
+
+            if($even){
+                if (isset($options['evencolor']))
+                {
+                    $options["tr"]["bgcolor"] = $options['evencolor'];
+                }
+            } else {
+                if (isset($options['oddcolor']))
+                {
+                    $options["tr"]["bgcolor"] = $options['oddcolor'];
+                }
+            }
             foreach($v as $kk => $vv){
                 if(!empty($options["width"]) && isset($options["width"][$kk]))$options["td"]["width"]=$options["width"][$kk];
                 $line.=$this->wrap("td", $vv, $options);

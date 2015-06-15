@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -156,13 +156,19 @@ class quicksearchQuery
         }
         $conditionArray = array();
 
-        if (!is_array($args['conditions'])) {
+        if (!isset($args['conditions']) || !is_array($args['conditions'])) {
             $args['conditions'] = array();
         }
 
         foreach($args['conditions'] as $condition)
         {
-            switch ($condition['op'])
+            if (isset($condition['op'])) {
+                $operator = $condition['op'];
+            } else {
+                $operator = null;
+            }
+
+            switch ($operator)
             {
                 case self::CONDITION_CONTAINS:
                     array_push(
@@ -225,16 +231,19 @@ class quicksearchQuery
             }
         }
 
-        $whereClause = sprintf('(%s)', implode(" {$args['group']} ", $conditionArray));
+        $whereClauseArray = array();
+        if (!empty($conditionArray)) {
+            $whereClauseArray[] = sprintf('(%s)', implode(" {$args['group']} ", $conditionArray));
+        }
         if(!empty($this->extra_where)) {
-            $whereClause .= " AND ({$this->extra_where})";
+            $whereClauseArray[] = "({$this->extra_where})";
         }
 
         if ($table == 'users') {
-            $whereClause .= sprintf(" AND users.status='Active'");
+            $whereClauseArray[] = "users.status='Active'";
         }
 
-        return $whereClause;
+        return implode(' AND ', $whereClauseArray);
     }
 
     /**
@@ -264,6 +273,9 @@ class quicksearchQuery
             $listData = $results[$i]->get_list_view_data();
 
             foreach ($args['field_list'] as $field) {
+                if ($field == "user_hash") {
+                    continue;
+                }
                 // handle enums
                 if ((isset($results[$i]->field_name_map[$field]['type']) && $results[$i]->field_name_map[$field]['type'] == 'enum')
                     || (isset($results[$i]->field_name_map[$field]['custom_type']) && $results[$i]->field_name_map[$field]['custom_type'] == 'enum')) {
@@ -363,6 +375,7 @@ class quicksearchQuery
                 $data  = $this->updateData($data, $focus, $orderBy, $where, $limit, $singleSelect);
             }
         }
+
 
         return $data;
     }
@@ -488,7 +501,7 @@ class quicksearchQuery
         global $sugar_config;
 
         // override query limits
-        if ($sugar_config['list_max_entries_per_page'] < ($args['limit'] + 1)) {
+        if (isset($args['limit']) && $sugar_config['list_max_entries_per_page'] < ($args['limit'] + 1)) {
             $sugar_config['list_max_entries_per_page'] = ($args['limit'] + 1);
         }
 
@@ -535,29 +548,48 @@ class quicksearchQuery
     }
 
     /**
-     * Returns additional where condition for non private teams
+     * Returns additional where condition for non private teams and removes arguments that have been replaced with
+     * custom where clauses
      *
      * @param array $args
      * @return string
      */
-    protected function getNonPrivateTeamsWhere($args)
+    protected function getNonPrivateTeamsWhere(&$args)
     {
         global $db;
 
-        $where = sprintf(
-            "(teams.name like '%s%%' or teams.name_2 like '%s%%')",
-            $db->quote($args['conditions'][0]['value']),
-            $db->quote($args['conditions'][0]['value'])
-        );
+        $where = array();
+        $teams_filtered = false;
 
-        $where .= (!empty($args['conditions'][1]) && $args['conditions'][1]['name'] == 'user_id')
-            ? sprintf(
-                " AND teams.id in (select team_id from team_memberships where user_id = '%s')",
-                $db->quote($args['conditions'][1]['value'])
-            )
-            : ' AND teams.private = 0';
+        if (isset($args['conditions']) && is_array($args['conditions'])) {
+            foreach ($args['conditions'] as $i => $condition) {
+                if (isset($condition['name'], $condition['value'])) {
+                    switch($condition['name']) {
+                        case 'name':
+                            $where[] = sprintf(
+                                "(teams.name like '%s%%' OR teams.name_2 like '%s%%')",
+                                $db->quote($condition['value']),
+                                $db->quote($condition['value'])
+                            );
+                            unset($args['conditions'][$i]);
+                            break;
+                        case 'user_id':
+                            $where[] = sprintf(
+                                "teams.id IN (SELECT team_id FROM team_memberships WHERE user_id = '%s' AND deleted = 0)",
+                                $db->quote($condition['value'])
+                            );
+                            unset($args['conditions'][$i]);
+                            $teams_filtered = true;
+                    }
+                }
+            }
+        }
 
-        return $where;
+        if (!$teams_filtered) {
+            $where[] ='teams.private = 0';
+        }
+
+        return implode(' AND ', $where);
     }
 
     /**

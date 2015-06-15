@@ -1,7 +1,7 @@
 {*
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -36,6 +36,8 @@
 
 *}
 {{* If templateMeta.maxColumnsBasic is not set, use maxColumns *}}
+<input type='hidden' id="orderByInput" name='orderBy' value=''/>
+<input type='hidden' id="sortOrder" name='sortOrder' value=''/>
 {if !isset($templateMeta.maxColumnsBasic)}
 	{assign var="basicMaxColumns" value=$templateMeta.maxColumns}
 {else}

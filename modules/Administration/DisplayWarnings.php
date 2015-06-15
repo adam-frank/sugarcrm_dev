@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -47,25 +47,6 @@ if(!empty($_SESSION['display_lotuslive_alert'])){
     displayAdminError(translate('MSG_RECONNECT_LOTUSLIVE', 'Administration'));
 }
 
-//BEGIN SUGARCRM flav=pro
-if( is_admin($current_user) && file_exists('include/SugarSearchEngine/SugarSearchEngineFactory.php') )
-{
-    require_once('include/SugarSearchEngine/SugarSearchEngineFactory.php');
-    $ftsType = SugarSearchEngineFactory::getFTSEngineNameFromConfig();
-    if(!empty($ftsType) && isset($GLOBALS['sugar_config']['full_text_engine'][$ftsType]['valid']) && !$GLOBALS['sugar_config']['full_text_engine'][$ftsType]['valid'])
-    {
-        displayAdminError(translate('LBL_FTS_CONNECTION_INVALID', 'Administration'));
-    }
-
-}
-if (is_admin($current_user))
-{
-    if (!empty($GLOBALS['sugar_config']['fts_disable_notification']))
-    {
-        displayAdminError(translate('LBL_FTS_DISABLED', 'Administration'));
-    }
-}
-//END SUGARCRM flav=pro
 
 
 

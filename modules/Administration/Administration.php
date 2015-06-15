@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -84,10 +84,17 @@ class Administration extends SugarBean {
         // Check for a cache hit
         if(!empty($settings_cache)) {
             $this->settings = $settings_cache;
-            return $this;
+            if (!empty($this->settings[$category]))
+            {
+                return $this;
+            }
         }
 
-        $query = "SELECT category, name, value FROM {$this->table_name}";
+        if ( ! empty($category) ) {
+            $query = "SELECT category, name, value FROM {$this->table_name} WHERE category = '{$category}'";
+        } else {
+            $query = "SELECT category, name, value FROM {$this->table_name}";
+        }
 
         $result = $this->db->query($query, true, "Unable to retrieve system settings");
 
@@ -101,6 +108,7 @@ class Administration extends SugarBean {
             else
                 $this->settings[$row['category']."_".$row['name']] = $row['value'];
         }
+        $this->settings[$category] = true;
 
         // outbound email settings
         $oe = new OutboundEmail();

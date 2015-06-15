@@ -1,6 +1,6 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -51,7 +51,7 @@ function sp_rem_conf(){return confirm(SUGAR.language.get('app_strings','NTC_REMO
 function sub_p_del(sp,submod,subrec,rp){return_url="index.php?module="+get_module_name()+"&action=SubPanelViewer&subpanel="+sp+"&record="+get_record_id()+"&sugar_body_only=1&inline=1";remove_url="index.php?module="+submod
 +"&action=delete"
 +"&record="+subrec
-+"&return_url="+escape(escape(return_url))
++"&return_url="+escape(return_url)
 +"&refresh_page="+rp;showSubPanel(sp,remove_url,true);}
 function sp_del_conf(){return confirm(SUGAR.language.get('app_strings','NTC_DELETE_CONFIRMATION'))}
 function get_record_id()
@@ -69,12 +69,12 @@ else
 var selection_list=popup_reply_data.selection_list;if(selection_list!='undefined'){for(var the_key in selection_list)
 {query_array.push('subpanel_id[]='+selection_list[the_key])}}
 var module=get_module_name();var id=get_record_id();query_array.push('value=DetailView');query_array.push('module='+module);query_array.push('http_method=get');query_array.push('return_module='+module);query_array.push('return_id='+id);query_array.push('record='+id);query_array.push('isDuplicate=false');query_array.push('action=Save2');query_array.push('inline=1');query_array.push('select_entire_list='+select_entire_list);if(select_entire_list==1){query_array.push('current_query_by_page='+current_query_by_page);}
-var refresh_page=escape(passthru_data['refresh_page']);for(prop in passthru_data){if(prop=='link_field_name'){query_array.push('subpanel_field_name='+escape(passthru_data[prop]));}else{if(prop=='module_name'){query_array.push('subpanel_module_name='+escape(passthru_data[prop]));}else{query_array.push(prop+'='+escape(passthru_data[prop]));}}}
+var refresh_page=escape(passthru_data['refresh_page']);for(prop in passthru_data){if(prop=='link_field_name'){query_array.push('subpanel_field_name='+escape(passthru_data[prop]));}else{if(prop=='module_name'){query_array.push('subpanel_module_name='+escape(passthru_data[prop]));}else if(prop=='prospect_ids'){for(var i=0;i<passthru_data[prop].length;i++){query_array.push(prop+'[]='+escape(passthru_data[prop][i]));}}else{query_array.push(prop+'='+escape(passthru_data[prop]));}}}
 var query_string=query_array.join('&');request_map[request_id]=passthru_data['child_field'];var returnstuff=http_fetch_sync('index.php',query_string);request_id++;if(typeof returnstuff!='undefined'&&typeof returnstuff.responseText!='undefined'&&returnstuff.responseText.length!=0){got_data(returnstuff,true);}
 if(refresh_page==1){document.location.reload(true);}}
 function got_data(args,inline)
 {var list_subpanel=document.getElementById('list_subpanel_'+request_map[args.request_id].toLowerCase());if(list_subpanel!=null){var subpanel=document.getElementById('subpanel_'+request_map[args.request_id].toLowerCase());var child_field=request_map[args.request_id].toLowerCase();if(inline){child_field_loaded[child_field]=2;list_subpanel.innerHTML='';list_subpanel.innerHTML=args.responseText;}else{child_field_loaded[child_field]=1;subpanel.innerHTML='';subpanel.innerHTML=args.responseText;var inlineTable=subpanel.getElementsByTagName('table');inlineTable=inlineTable[1];inlineTable=subpanel.removeChild(inlineTable);var listDiv=document.createElement('div');listDiv.id='list_subpanel_'+request_map[args.request_id].toLowerCase();subpanel.appendChild(listDiv);listDiv.appendChild(inlineTable);}
-subpanel.style.display='';set_div_cookie(subpanel.cookie_name,'');if(current_child_field!=''&&child_field!=current_child_field)
+SUGAR.util.evalScript(args.responseText);subpanel.style.display='';set_div_cookie(subpanel.cookie_name,'');if(current_child_field!=''&&child_field!=current_child_field)
 {}
 current_child_field=child_field;$("ul.clickMenu").each(function(index,node){$(node).sugarActionMenu();});}}
 function showSubPanel(child_field,url,force_load,layout_def_key)
@@ -103,11 +103,17 @@ SUGAR.subpanelUtils=function(){var originalLayout=null,subpanelContents={},subpa
 if(asString)return subpanelIds.join(',');else return subpanelIds;},onDrag:function(e,id){originalLayout=SUGAR.subpanelUtils.getLayout(true,true);},onDrop:function(e,id){newLayout=SUGAR.subpanelUtils.getLayout(true,true);if(originalLayout!=newLayout){SUGAR.subpanelUtils.saveLayout(newLayout);}},saveLayout:function(order){ajaxStatus.showStatus(SUGAR.language.get('app_strings','LBL_SAVING_LAYOUT'));if(typeof SUGAR.subpanelUtils.currentSubpanelGroup!='undefined'){var orderList=SUGAR.subpanelUtils.getLayout(false,true);var currentGroup=SUGAR.subpanelUtils.currentSubpanelGroup;}
 var success=function(data){ajaxStatus.showStatus(SUGAR.language.get('app_strings','LBL_SAVED_LAYOUT'));window.setTimeout('ajaxStatus.hideStatus()',2000);if(typeof SUGAR.subpanelUtils.currentSubpanelGroup!='undefined'){SUGAR.subpanelUtils.reorderSubpanelSubtabs(currentGroup,orderList);}}
 url='index.php?module=Home&action=SaveSubpanelLayout&layout='+order+'&layoutModule='+currentModule;if(typeof SUGAR.subpanelUtils.currentSubpanelGroup!='undefined'){url=url+'&layoutGroup='+encodeURI(SUGAR.subpanelUtils.currentSubpanelGroup);}
-var cObj=YAHOO.util.Connect.asyncRequest('GET',url,{success:success,failure:success});},inlineSave:function(theForm,buttonName){ajaxStatus.showStatus(SUGAR.language.get('app_strings','LBL_SAVING'));var success=function(data){var element=document.getElementById(buttonName);do{element=element.parentNode;}while(element.className!='quickcreate'&&element.parentNode);if(element.className=='quickcreate'){var subpanel=element.id.slice(9,-7);var module=get_module_name();var id=get_record_id();var layout_def_key=get_layout_def_key();try{eval('result = '+data.responseText);}catch(err){}
-if(typeof(result)!='undefined'&&result!=null&&result['status']=='dupe'){document.location.href="index.php?"+result['get'].replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/&#039;/gi,'\'').replace(/&quot;/gi,'"').replace(/\r\n/gi,'\n');return;}else{SUGAR.subpanelUtils.cancelCreate(buttonName);showSubPanel(subpanel,null,true);ajaxStatus.showStatus(SUGAR.language.get('app_strings','LBL_SAVED'));window.setTimeout('ajaxStatus.hideStatus()',1000);if(reloadpage)window.location.reload(false);}}}
-var reloadpage=false;reloadpage=reloadpage||((buttonName=='Meetings_subpanel_save_button'||buttonName=='Calls_subpanel_save_button')&&typeof(theForm)!='undefined'&&typeof(document.getElementById(theForm))!='undefined'&&typeof(document.getElementById(theForm).status)!='undefined'&&document.getElementById(theForm).status[document.getElementById(theForm).status.selectedIndex].value=='Held');reloadpage=reloadpage||(buttonName=='Tasks_subpanel_save_button'&&typeof(theForm)!='undefined'&&typeof(document.getElementById(theForm))!='undefined'&&typeof(document.getElementById(theForm).status)!='undefined'&&document.getElementById(theForm).status[document.getElementById(theForm).status.selectedIndex].value=='Completed');YAHOO.util.Connect.setForm(theForm,true,true);var cObj=YAHOO.util.Connect.asyncRequest('POST','index.php',{success:success,failure:success,upload:success});return false;},sendAndRetrieve:function(theForm,theDiv,loadingStr){var quickCreateDiv=YAHOO.util.Selector.query("div.quickcreate",null,true);if(quickCreateDiv)
+var cObj=YAHOO.util.Connect.asyncRequest('GET',url,{success:success,failure:success});},inlineSave:function(theForm,buttonName){var saveButton=document.getElementsByName(buttonName);for(var i=0;i<saveButton.length;i++){saveButton[i].disabled=true;}
+ajaxStatus.showStatus(SUGAR.language.get('app_strings','LBL_SAVING'));var success=function(data){var module=get_module_name();var id=get_record_id();var layout_def_key=get_layout_def_key();try{eval('result = '+data.responseText);}catch(err){}
+if(typeof(result)!='undefined'&&result!=null&&result['status']=='dupe'){document.location.href="index.php?"+result['get'].replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/&#039;/gi,'\'').replace(/&quot;/gi,'"').replace(/\r\n/gi,'\n');for(var i=0;i<saveButton.length;i++){saveButton[i].disabled=false;}
+return;}else{SUGAR.subpanelUtils.cancelCreate(buttonName);var parts=theForm.split('_');var savedModule='';var subPanels=[];for(var i=parts.length-1;i>=0;i--){if(parts[i]==''){continue;}
+if(savedModule!=''){savedModule='_'+savedModule;}
+savedModule=parts[i]+savedModule;if(window.ModuleSubPanels&&window.ModuleSubPanels[savedModule]){subPanels=subPanels.concat(window.ModuleSubPanels[savedModule]);}}
+for(var i=0;i<subPanels.length;i++){showSubPanel(subPanels[i],null,true);}
+ajaxStatus.showStatus(SUGAR.language.get('app_strings','LBL_SAVED'));window.setTimeout('ajaxStatus.hideStatus()',1000);for(var i=0;i<saveButton.length;i++){saveButton[i].disabled=false;}}}
+YAHOO.util.Connect.setForm(theForm,true,true);var cObj=YAHOO.util.Connect.asyncRequest('POST','index.php',{success:success,failure:success,upload:success});return false;},sendAndRetrieve:function(theForm,theDiv,loadingStr){var quickCreateDiv=YAHOO.util.Selector.query("div.quickcreate",null,true);if(quickCreateDiv)
 {var form=YAHOO.util.Selector.query("form",quickCreateDiv,true);if(form)
-{var moduleName=form.id.replace(/.*?_([^_]+)$/,"$1");var buttonName=moduleName+"_subpanel_cancel_button";var cancelled=false;SUGAR.subpanelUtils.cancelCreate(buttonName,function()
+{var moduleName=YAHOO.util.Selector.query('input[name=module]',form,true).value;var buttonName=moduleName+"_subpanel_cancel_button";var cancelled=false;SUGAR.subpanelUtils.cancelCreate(buttonName,function()
 {cancelled=true;});if(cancelled)
 {return false;}}}
 function success(data){var theDivObj=document.getElementById(theDiv),divName=theDiv+'_newDiv',form_el;SUGAR.subpanelUtils.dataToDOMAvail=false;if(typeof currentPanelDiv!='undefined'&&currentPanelDiv!=null){var button_elements=YAHOO.util.Selector.query('td.buttons',currentPanelDiv,false);YAHOO.util.Dom.setStyle(button_elements,'display','');}

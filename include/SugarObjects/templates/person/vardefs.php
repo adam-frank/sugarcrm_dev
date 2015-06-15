@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -151,6 +151,7 @@ $vardefs =array(
 			),
 			'vname' =>'LBL_ANY_EMAIL',
 			'studio' => array('visible'=>false, 'searchview'=>true),
+            'importable' => false,
 		),
 	'phone_mobile' =>
 		array (
@@ -212,8 +213,8 @@ $vardefs =array(
 			'source'	=> 'non-db',
 			'group'=>'email1',
             'merge_filter' => 'enabled',
-		    'studio' => array('editField' => true, 'searchview' => false, 'popupsearch' => false), // bug 46859 
-		    'full_text_search' => array('boost' => 3, 'index' => 'not_analyzed'), //bug 54567
+		    'studio' => array('editview' => true, 'editField' => true, 'searchview' => false, 'popupsearch' => false), // bug 46859 
+		    'full_text_search' => array('boost' => 3, 'analyzer' => 'whitespace'), //bug 54567
 		),
 	'email2' => 
 		array(
@@ -422,6 +423,17 @@ $vardefs =array(
             'reportable'=>false,
             'unified_search' => true,
             'rel_fields' => array('primary_address' => array('type'=>'bool')),
+        ),
+    // Used for non-primary mail import
+    'email_addresses_non_primary'=>
+        array(
+            'name' => 'email_addresses_non_primary',
+            'type' => 'email',
+            'source' => 'non-db',
+            'vname' =>'LBL_EMAIL_NON_PRIMARY',
+            'studio' => false,
+            'reportable'=>false,
+            'massupdate' => false,
         ),
 ), 
 'relationships'=>array(

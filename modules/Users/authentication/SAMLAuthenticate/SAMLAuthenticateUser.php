@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -72,7 +72,12 @@ class SAMLAuthenticateUser extends SugarAuthenticateUser{
 		require_once('modules/Users/authentication/SAMLAuthenticate/lib/onelogin/saml.php');
         require(get_custom_file_if_exists('modules/Users/authentication/SAMLAuthenticate/settings.php'));
 
-        $samlresponse = new SamlResponse($settings, $_POST['SAMLResponse']);
+        try {
+            $samlresponse = new SamlResponse($settings, $_POST['SAMLResponse']);
+        } catch (Exception $e) {
+            $GLOBALS['log']->error("Unexpected exception: " . $e->getMessage());
+            return '';
+        }
 
 		if ($samlresponse->is_valid()){
 			$GLOBALS['log']->debug('response is valid');

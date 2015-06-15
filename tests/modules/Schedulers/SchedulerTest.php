@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -37,7 +37,7 @@
 require_once 'include/SugarQueue/SugarJobQueue.php';
 require_once 'modules/Schedulers/Scheduler.php';
 
-class SchedulersTest extends Sugar_PHPUnit_Framework_TestCase
+class SchedulerTest extends Sugar_PHPUnit_Framework_TestCase
 {
 	static protected $old_timedate;
 
@@ -183,6 +183,9 @@ class SchedulersTest extends Sugar_PHPUnit_Framework_TestCase
              array("*/15::*::*::*::1,2", "5/18/2011 2:00pm", null, false),
              array("*/15::*::*::*::1,2", "5/17/2011 2:10pm", "5/17/2011 2:00pm", false),
              array("*/15::*::*::*::1,2", "5/17/2011 2:15pm", "5/17/2011 2:00pm", true),
+            // Job with incorrectly set time-range should fail to execute (crontab notation allows no reverse ranges)
+            array("1-59::*::*::*::*", "5/17/2011 2:15pm", null, true),
+            array("59-1::*::*::*::*", "5/17/2011 2:15pm", null, false),
              );
     }
 
@@ -296,6 +299,7 @@ class SchedulersTest extends Sugar_PHPUnit_Framework_TestCase
         $this->scheduler->save();
 
         $job = new SchedulersJob();
+        $job->update_date_modified = false;
         $job->status = SchedulersJob::JOB_STATUS_RUNNING;
         $job->scheduler_id = $this->scheduler->id;
         $job->execute_time = $GLOBALS['timedate']->nowDb();

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -150,16 +150,7 @@ class Note extends SugarBean {
 			}
 			$removeFile = "upload://{$this->id}";
 		}
-		if(!empty($this->doc_type) && !empty($this->doc_id)){
-            $document = ExternalAPIFactory::loadAPI($this->doc_type);
 
-	      	$response = $document->deleteDoc($this);
-            $this->doc_type = '';
-            $this->doc_id = '';
-            $this->doc_url = '';
-            $this->filename = '';
-            $this->file_mime_type = '';
-		}
 		if(file_exists($removeFile)) {
 			if(!unlink($removeFile)) {
 				$GLOBALS['log']->error("*** Could not unlink() file: [ {$removeFile} ]");
@@ -174,7 +165,6 @@ class Note extends SugarBean {
 			$this->filename = '';
 			$this->file_mime_type = '';
 			$this->file = '';
-			$this->doc_id = '';
 			$this->save();
 			return true;
 		}
@@ -188,23 +178,18 @@ class Note extends SugarBean {
 
     function create_export_query(&$order_by, &$where, $relate_link_join='')
     {
-        $custom_join = $this->custom_fields->getJOIN(true, true,$where);
-		if($custom_join)
-				$custom_join['join'] .= $relate_link_join;
+        $custom_join = $this->getCustomJoin(true, true, $where);
+        $custom_join['join'] .= $relate_link_join;
 		$query = "SELECT notes.*, contacts.first_name, contacts.last_name, users.user_name as assigned_user_name ";
 
-		if($custom_join) {
-   			$query .= $custom_join['select'];
- 		}
+        $query .= $custom_join['select'];
 
     	$query .= " FROM notes ";
 
 		$query .= "	LEFT JOIN contacts ON notes.contact_id=contacts.id ";
         	$query .= "  LEFT JOIN users ON notes.assigned_user_id=users.id ";
 	
-		if($custom_join) {
-			$query .= $custom_join['join'];
-		}
+        $query .= $custom_join['join'];
 
 		$where_auto = " notes.deleted=0 AND (contacts.deleted IS NULL OR contacts.deleted=0)";
 
@@ -213,10 +198,11 @@ class Note extends SugarBean {
         else
 			$query .= "where ".$where_auto;
 
-        if($order_by != "")
-			$query .=  " ORDER BY ". $this->process_order_by($order_by, null);
-        else
-			$query .= " ORDER BY notes.name";
+        $order_by = $this->process_order_by($order_by);
+        if (empty($order_by)) {
+            $order_by = 'notes.name';
+        }
+        $query .= ' ORDER BY ' . $order_by;
 
 		return $query;
 	}
@@ -315,6 +301,7 @@ class Note extends SugarBean {
 	function bean_implements($interface) {
 		switch($interface) {
 			case 'ACL':return true;
+            case 'FILE' : return true;
 		}
 		return false;
 	}

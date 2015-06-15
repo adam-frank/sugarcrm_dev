@@ -2,7 +2,7 @@
 
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -36,7 +36,7 @@
  ********************************************************************************/
 
 
-require_once('data/SugarBean.php');
+require_once('include/SugarObjects/templates/file/File.php');
 
 class SugarBeanTest extends Sugar_PHPUnit_Framework_TestCase
 {
@@ -45,6 +45,17 @@ class SugarBeanTest extends Sugar_PHPUnit_Framework_TestCase
     {
         $GLOBALS['current_user'] = SugarTestUserUtilities::createAnonymousUser();
 	}
+
+    public function setUp()
+    {
+        SugarTestHelper::setUp('beanFiles');
+        SugarTestHelper::setUp('beanList');
+    }
+
+    public function tearDown()
+    {
+        SugarTestHelper::tearDown();
+    }
 
 	public static function tearDownAfterClass()
 	{
@@ -118,6 +129,215 @@ class SugarBeanTest extends Sugar_PHPUnit_Framework_TestCase
         SugarTestAccountUtilities::removeAllCreatedAccounts();
     }
 
+    /**
+     * Test whether a relate field is determined correctly
+     *
+     * @param array $field_defs
+     * @param string $field_name
+     * @param bool $is_relate
+     * @dataProvider isRelateFieldProvider
+     * @covers SugarBean::is_relate_field
+     */
+    public function testIsRelateField(array $field_defs, $field_name, $is_relate)
+    {
+        $bean = new BeanIsRelateFieldMock();
+        $bean->field_defs = $field_defs;
+        $actual = $bean->is_relate_field($field_name);
+
+        if ($is_relate)
+        {
+            $this->assertTrue($actual);
+        }
+        else
+        {
+            $this->assertFalse($actual);
+        }
+    }
+
+    public static function isRelateFieldProvider()
+    {
+        return array(
+            // test for on a non-existing field
+            array(
+                array(), 'dummy', false,
+            ),
+            // test for non-specified field type
+            array(
+                array(
+                    'my_field' => array(),
+                ), 'my_field', false,
+            ),
+            // test on a non-relate field type
+            array(
+                array(
+                    'my_field' => array(
+                        'type' => 'varchar',
+                    ),
+                ), 'my_field', false,
+            ),
+            // test on a relate field type but link not specified
+            array(
+                array(
+                    'my_field' => array(
+                        'type' => 'relate',
+                    ),
+                ), 'my_field', false,
+            ),
+            // test when only link is specified
+            array(
+                array(
+                    'my_field' => array(
+                        'link' => 'my_link',
+                    ),
+                ), 'my_field', false,
+            ),
+            // test on a relate field type
+            array(
+                array(
+                    'my_field' => array(
+                        'type' => 'relate',
+                        'link' => 'my_link',
+                    ),
+                ), 'my_field', true,
+            ),
+        );
+    }
+
+    /**
+     * Test asserts behavior of haveFiles method
+     *
+     * @group 58955
+     * @dataProvider getHaveFiles
+     */
+    public function testHaveFiles($class, $expected)
+    {
+        /**
+         * @var SugarBean $bean
+         */
+        $bean = new $class();
+        $this->assertEquals($expected, $bean->haveFiles(), 'Result is incorrect');
+    }
+
+    /**
+     * Test asserts behavior of getFiles method
+     *
+     * @group 58955
+     */
+    public function testGetFiles()
+    {
+        $bean = new SugarBean58955Extends();
+        $this->assertEmpty($bean->getFiles(), 'Incorrect result');
+
+        $bean->id = 'test';
+        $this->assertEquals(array('test'), $bean->getFiles(), 'Incorrect result');
+
+        $bean = new SugarBean58955Implements();
+        $this->assertEmpty($bean->getFiles(), 'Incorrect result');
+
+        $bean->id = 'test';
+        $this->assertEquals(array('test'), $bean->getFiles(), 'Incorrect result');
+
+        $bean = new SugarBean58955Image();
+        $bean->id = 'test';
+        $this->assertEmpty($bean->getFiles(), 'Incorrect result');
+
+        $bean->image = 'test';
+        $this->assertEquals(array('test'), $bean->getFiles(), 'Incorrect result');
+    }
+
+    /**
+     * Data provider for testHaveFiles
+     * @return array
+     */
+    public function getHaveFiles()
+    {
+        return array(
+            array('SugarBean58955Extends', true),
+            array('SugarBean58955Implements', true),
+            array('SugarBean58955Image', true),
+            array('SugarBean', false),
+        );
+    }
+
+    /**
+     * Test asserts behavior of getFilesFields method
+     *
+     * @group 58955
+     */
+    public function testGetFilesFields()
+    {
+        $bean = new SugarBean58955Extends();
+        $this->assertEquals(array('id'), $bean->getFilesFields(), 'Incorrect result');
+
+        $bean = new SugarBean58955Implements();
+        $this->assertEquals(array('id'), $bean->getFilesFields(), 'Incorrect result');
+
+        $bean = new SugarBean58955Image();
+        $this->assertEquals(array('image'), $bean->getFilesFields(), 'Incorrect result');
+    }
+}
+
+/**
+ * Class SugarBean58955Extends
+ * Mock for testHaveFiles & testGetFiles tests
+ */
+class SugarBean58955Extends extends File
+{
+    /**
+     * @var string
+     */
+    public $module_name = 'SugarBean58955Extends';
+
+    public function __construct()
+    {
+        $this->field_defs = array();
+    }
+}
+
+/**
+ * Class SugarBean58955Implements
+ * Mock for testHaveFiles & testGetFiles tests
+ */
+class SugarBean58955Implements extends SugarBean
+{
+    /**
+     * @var string
+     */
+    public $module_name = 'SugarBean58955Implements';
+
+    public function __construct()
+    {
+        $this->field_defs = array();
+    }
+
+    public function bean_implements($interface)
+    {
+        if ($interface == 'FILE') {
+            return true;
+        }
+        return parent::bean_implements($interface);
+    }
+}
+
+/**
+ * Class SugarBean58955Image
+ * Mock for testHaveFiles & testGetFiles tests
+ */
+class SugarBean58955Image extends SugarBean
+{
+    /**
+     * @var string
+     */
+    public $module_name = 'SugarBean58955Image';
+
+    public function __construct()
+    {
+        $this->field_defs = array(
+            'image' => array(
+                'type' => 'image'
+            )
+        );
+    }
 }
 
 // Using Mssql here because mysql needs real connection for quoting
@@ -151,4 +371,12 @@ class BeanMockTestObjectName extends SugarBean
     function BeanMockTestObjectName() {
 		parent::SugarBean();
 	}
+}
+
+class BeanIsRelateFieldMock extends SugarBean
+{
+    public function is_relate_field($field_name_name)
+    {
+        return parent::is_relate_field($field_name_name);
+    }
 }

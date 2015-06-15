@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -58,6 +58,7 @@ class SugarView
      */
     var $bean = null;
     /**
+     * @var Sugar_Smarty
      * Sugar_Smarty. This is useful if you have a view and a subview you can
      * share the same smarty object.
      */
@@ -141,6 +142,20 @@ class SugarView
             $GLOBALS['logic_hook']->call_custom_logic($this->module, 'after_ui_frame');
         } else {
             $GLOBALS['logic_hook']->call_custom_logic('', 'after_ui_frame');
+        }
+
+        // We have to update jsAlerts as soon as possible
+        if (
+            !isset($_SESSION['isMobile'])
+            &&
+            (
+                $this instanceof ViewList
+                || $this instanceof ViewDetail
+                || $this instanceof ViewEdit
+            )
+        ) {
+            $jsAlerts = new jsAlerts();
+            echo $jsAlerts->getScript();
         }
 
         if ($this->_getOption('show_subpanels') && !empty($_REQUEST['record'])) $this->_displaySubPanels();
@@ -441,12 +456,7 @@ class SugarView
             // get the last viewed records
             $tracker = new Tracker();
             $history = $tracker->get_recently_viewed($current_user->id);
-            foreach ( $history as $key => $row ) {
-                $history[$key]['item_summary_short'] = getTrackerSubstring($row['item_summary']);
-                $history[$key]['image'] = SugarThemeRegistry::current()
-                    ->getImage($row['module_name'],'border="0" align="absmiddle"',null,null,'.gif',$row['item_summary']);
-            }
-            $ss->assign("recentRecords",$history);
+            $ss->assign("recentRecords",$this->processRecentRecords($history));
         }
 
         $bakModStrings = $mod_strings;
@@ -869,11 +879,6 @@ EOHTML;
             $showThemePicker = $sugar_config['showThemePicker'];
         }
 
-        echo "<!-- crmprint -->";
-        $jsalerts = new jsAlerts();
-        if ( !isset($_SESSION['isMobile']) )
-            echo $jsalerts->getScript();
-
         $ss = new Sugar_Smarty();
         $ss->assign("AUTHENTICATED",isset($_SESSION["authenticated_user_id"]));
         $ss->assign('MOD',return_module_language($GLOBALS['current_language'], 'Users'));
@@ -909,7 +914,7 @@ EOHTML;
         // the code and end-user application.
 
 
-        $copyright = '&copy; 2004-2012 SugarCRM Inc. The Program is provided AS IS, without warranty.  Licensed under <a href="LICENSE.txt" target="_blank" class="copyRightLink">AGPLv3</a>.<br>This program is free software; you can redistribute it and/or modify it under the terms of the <br><a href="LICENSE.txt" target="_blank" class="copyRightLink"> GNU Affero General Public License version 3</a> as published by the Free Software Foundation, including the additional permission set forth in the source code header.<br>';
+        $copyright = '&copy; 2004-2013 SugarCRM Inc. The Program is provided AS IS, without warranty.  Licensed under <a href="LICENSE.txt" target="_blank" class="copyRightLink">AGPLv3</a>.<br>This program is free software; you can redistribute it and/or modify it under the terms of the <br><a href="LICENSE.txt" target="_blank" class="copyRightLink"> GNU Affero General Public License version 3</a> as published by the Free Software Foundation, including the additional permission set forth in the source code header.<br>';
 
 
 
@@ -984,6 +989,18 @@ EOHTML;
         }
         // End Required Image
         $ss->assign('COPYRIGHT',$copyright);
+
+        // here we allocate the help link data
+        $help_actions_blacklist = array('Login'); // we don't want to show a context help link here
+        if (!in_array($this->action,$help_actions_blacklist)) {
+            $url = 'javascript:void(window.open(\'index.php?module=Administration&action=SupportPortal&view=documentation&version='.$GLOBALS['sugar_version'].'&edition='.$GLOBALS['sugar_flavor'].'&lang='.$GLOBALS['current_language'].
+                        '&help_module='.$this->module.'&help_action='.$this->action.'&key='.$GLOBALS['server_unique_key'].'\'))';
+            $label = (isset($GLOBALS['app_list_strings']['moduleList'][$this->module]) ?
+                        $GLOBALS['app_list_strings']['moduleList'][$this->module] : $this->module). ' '.$app_strings['LNK_HELP'];
+            $ss->assign('HELP_LINK',SugarThemeRegistry::current()->getLink($url, $label, "id='help_link_two'",
+                'help-dashlet.png', 'class="icon"',null,null,'','left'));
+        }
+        // end
 
 
         $ss->display(SugarThemeRegistry::current()->getTemplate('footer.tpl'));
@@ -1281,10 +1298,14 @@ EOHTML;
         if(!empty($paramString)){
                $theTitle .= "<h2> $paramString </h2>\n";
            }
-		$theTitle .= "<span class='utils'>";
-		$createImageURL = SugarThemeRegistry::current()->getImageURL('create-record.gif');
-        $url = ajaxLink("index.php?module=$module&action=EditView&return_module=$module&return_action=DetailView");
-		$theTitle .= <<<EOHTML
+
+
+        // bug 56131 - restore conditional so that link doesn't appear where it shouldn't
+        if($show_help) {
+            $theTitle .= "<span class='utils'>";
+            $createImageURL = SugarThemeRegistry::current()->getImageURL('create-record.gif');
+            $url = ajaxLink("index.php?module=$module&action=EditView&return_module=$module&return_action=DetailView");
+            $theTitle .= <<<EOHTML
 &nbsp;
 <a id="create_image" href="{$url}" class="utilsLink">
 <img src='{$createImageURL}' alt='{$GLOBALS['app_strings']['LNK_CREATE']}'></a>
@@ -1292,8 +1313,10 @@ EOHTML;
 {$GLOBALS['app_strings']['LNK_CREATE']}
 </a>
 EOHTML;
+            $theTitle .= "</span>";
+        }
 
-        $theTitle .= "</span><div class='clear'></div></div>\n";
+        $theTitle .= "<div class='clear'></div></div>\n";
         return $theTitle;
     }
 
@@ -1601,6 +1624,22 @@ EOHTML;
     protected function fetchTemplate($file)
     {
         return $this->ss->fetch($file);
+    }
+
+    /**
+     * handles the tracker output, and adds a link and a shortened name.
+     * given html safe input, it will preserve html safety
+     *
+     * @param array $history - returned from the tracker
+     * @return array augmented history with image link and shortened name
+     */
+    protected function processRecentRecords($history) {
+        foreach ( $history as $key => $row ) {
+            $history[$key]['item_summary_short'] = to_html(getTrackerSubstring($row['item_summary'])); //bug 56373 - need to re-HTML-encode
+            $history[$key]['image'] = SugarThemeRegistry::current()
+                ->getImage($row['module_name'],'border="0" align="absmiddle"',null,null,'.gif',$row['item_summary']);
+        }
+        return $history;
     }
 
     /**

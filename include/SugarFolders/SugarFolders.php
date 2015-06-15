@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -333,8 +333,15 @@ ENDQ;
 		$start = ($page - 1) * $pageSize;
 
 		$sort = (empty($sort)) ? $this->defaultSort : $sort;
-        $direction = (empty($direction)) ? $this->defaultDirection : $direction;
-        $order = " ORDER BY {$this->hrSortLocal[$sort]} {$direction}";
+        if (!in_array(strtolower($direction), array('asc', 'desc'))) {
+            $direction = $this->defaultDirection;
+        }
+
+        if (!empty($this->hrSortLocal[$sort])) {
+            $order = " ORDER BY {$this->hrSortLocal[$sort]} {$direction}";
+        } else {
+            $order = "";
+        }
 
 		if($this->is_dynamic) {
 			$r = $this->db->limitQuery(from_html($this->generateSugarsDynamicFolderQuery() . $order), $start, $pageSize);

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -43,6 +43,14 @@ $searchFields['Documents'] =
 		'active_date'=> array('query_type'=>'default'),
 		'exp_date'=> array('query_type'=>'default'),
 		'assigned_user_id'=> array('query_type'=>'default'),
+		'filename' => array(
+    		    'query_type' => 'format',
+    		    'operator' => 'subquery',
+    		    'subquery' => 'SELECT document_revisions.id FROM document_revisions
+			           WHERE document_revisions.deleted=0
+				   AND document_revisions.filename LIKE \'{0}\'',
+                    'db_field' => array(0 => 'document_revision_id')
+                ),
 		//Range Search Support 
 	    'range_date_entered' => array ('query_type' => 'default', 'enable_range_search' => true, 'is_date_field' => true),
 	    'start_range_date_entered' => array ('query_type' => 'default', 'enable_range_search' => true, 'is_date_field' => true),

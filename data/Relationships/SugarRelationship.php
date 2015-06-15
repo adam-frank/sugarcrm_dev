@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -71,7 +71,7 @@ abstract class SugarRelationship
      * @abstract
      * @param  $lhs SugarBean
      * @param  $rhs SugarBean
-     * @return void
+     * @return boolean
      */
     public abstract function remove($lhs, $rhs);
 
@@ -115,12 +115,14 @@ abstract class SugarRelationship
 
     /**
      * @param  $link Link2 removes all the beans associated with this link from the relationship
-     * @return void
+     * @return boolean     true if all beans were successfully removed or there
+     *                     were not related beans, false otherwise
      */
     public function removeAll($link)
     {
         $focus = $link->getFocus();
         $related = $link->getBeans();
+        $result = true;
         foreach($related as $relBean)
         {
             if (empty($relBean->id)) {
@@ -128,10 +130,18 @@ abstract class SugarRelationship
             }
 
             if ($link->getSide() == REL_LHS)
-                $this->remove($focus, $relBean);
+            {
+                $sub_result = $this->remove($focus, $relBean);
+            }
             else
-                $this->remove($relBean, $focus);
+            {
+                $sub_result = $this->remove($relBean, $focus);
+            }
+
+            $result = $result && $sub_result;
         }
+
+        return $result;
     }
 
     /**
@@ -184,7 +194,7 @@ abstract class SugarRelationship
 
     /**
      * @param array $row values to be inserted into the relationship
-     * @return bool|void null if new row was inserted and true if an exesting row was updated
+     * @return bool|void null if new row was inserted and true if an existing row was updated
      */
     protected function addRow($row)
     {
@@ -327,6 +337,7 @@ abstract class SugarRelationship
         $custom_logic_arguments['related_id'] = $related->id;
         $custom_logic_arguments['module'] = $focus->module_dir;
         $custom_logic_arguments['related_module'] = $related->module_dir;
+        $custom_logic_arguments['related_bean'] = $related;
         $custom_logic_arguments['link'] = $link_name;
         $custom_logic_arguments['relationship'] = $this->name;
 
@@ -431,6 +442,14 @@ abstract class SugarRelationship
                 if (empty($bean->deleted) && empty($bean->in_save))
                 {
                     $bean->save();
+                }
+                else
+                {
+                    // Bug 55942 save the in-save id which will be used to send workflow alert later
+                    if (isset($bean->id) && !empty($_SESSION['WORKFLOW_ALERTS']))
+                    {
+                        $_SESSION['WORKFLOW_ALERTS']['id'] = $bean->id;
+                    }
                 }
             }
         }

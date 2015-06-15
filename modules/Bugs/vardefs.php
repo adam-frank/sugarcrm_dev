@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -48,7 +48,10 @@ $dictionary['Bug'] = array('table' => 'bugs',    'audited'=>true, 'comment' => '
     'comment' => 'The software or service release that manifested the bug',
     'duplicate_merge' => 'disabled',
     'audited' =>true,
-  	'studio' => array('fields' => 'false', 'listview' => false, 'wirelesslistview' => false ), // tyoung bug 16442 - don't show in studio fields list
+    'studio' => array(
+        'fields' => 'false',  // tyoung bug 16442 - don't show in studio fields list
+        'listview' => false,
+    ),
     'massupdate' => true,
   	),
 'release_name'=>
@@ -73,13 +76,6 @@ $dictionary['Bug'] = array('table' => 'bugs',    'audited'=>true, 'comment' => '
        'quickcreate' => false, 
        'basic_search' => false, 
        'advanced_search' => false,
-	   //BEGIN SUGARCRM flav=pro
-	   'wirelesseditview' => false,
-	   'wirelessdetailview' => false,
-	   'wirelesslistview' => 'visible',
-	   'wireless_basic_search' => false,
-	   'wireless_advanced_search' => false,
-	   //END SUGARCRM flav=pro
 	   ),
   ),
 
@@ -93,7 +89,10 @@ $dictionary['Bug'] = array('table' => 'bugs',    'audited'=>true, 'comment' => '
     'comment' => 'The software or service release that corrected the bug',
     'duplicate_merge' => 'disabled',
     'audited' =>true,
-  	'studio' => array('fields' => 'false', 'listview' => false, 'wirelesslistview' => false), // tyoung bug 16442 - don't show in studio fields list
+    'studio' => array(
+        'fields' => 'false', // tyoung bug 16442 - don't show in studio fields list
+        'listview' => false,
+    ),
   	'massupdate' => true,
   	),
    'fixed_in_release_name'=>
@@ -118,13 +117,6 @@ $dictionary['Bug'] = array('table' => 'bugs',    'audited'=>true, 'comment' => '
        'quickcreate' => false, 
        'basic_search' => false, 
        'advanced_search' => false,
-       //BEGIN SUGARCRM flav=pro
-       'wirelesseditview' => false,
-       'wirelessdetailview' => false,
-       'wirelesslistview' => 'visible',
-       'wireless_basic_search' => false,
-       'wireless_advanced_search' => false,
-       //END SUGARCRM flav=pro
        ),
   ),
     'source' =>

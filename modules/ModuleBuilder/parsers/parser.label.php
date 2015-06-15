@@ -3,7 +3,7 @@ if (! defined ( 'sugarEntry' ) || ! sugarEntry)
     die ( 'Not A Valid Entry Point' ) ;
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -70,7 +70,26 @@ class ParserLabel extends ModuleBuilderParser
             return self::addLabels ( $language, $labels, $this->moduleName, "custom/modulebuilder/packages/{$this->packageName}/modules/{$this->moduleName}/language" ) ;
         } else
         {
-            return self::addLabels ( $language, $labels, $this->moduleName ) ;
+            $addLabelsResult = true;
+            $addExtLabelsResult = true;
+            $extLabels = array();
+            $extFile = "custom/modules/".$this->moduleName."/Ext/Language/".$language.".lang.ext.php";
+            if (is_file($extFile)) {
+                include($extFile);
+                foreach ($labels as $key=>$value) {
+                    if (isset($mod_strings[$key])) {
+                        $extLabels[$key] = $value;
+                        unset($labels[$key]);
+                    }
+                }
+            }
+            if (!empty($labels)) {
+                $addLabelsResult =  self::addLabels($language, $labels, $this->moduleName);
+            }
+            if (!empty($extLabels)) {
+                $addExtLabelsResult =  self::addLabels($language, $extLabels, $this->moduleName, null, true);
+            }
+            return $addLabelsResult && $addExtLabelsResult;
         }
     }
 

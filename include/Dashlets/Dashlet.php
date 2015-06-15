@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -253,19 +253,35 @@ class Dashlet
         $autoRefreshSS->assign('dashletOffset', $dashletOffset);
         $autoRefreshSS->assign('dashletId', $this->id);
         $autoRefreshSS->assign('strippedDashletId', str_replace("-","",$this->id)); //javascript doesn't like "-" in function names
-        if ( empty($this->autoRefresh) ) {
-            $this->autoRefresh = 0;
-        }
-        elseif ( !empty($sugar_config['dashlet_auto_refresh_min']) && $sugar_config['dashlet_auto_refresh_min'] > $this->autoRefresh ) {
-            $this->autoRefresh = $sugar_config['dashlet_auto_refresh_min'];
-        }
-        $autoRefreshSS->assign('dashletRefreshInterval', $this->autoRefresh * 1000);
+        $autoRefreshSS->assign('dashletRefreshInterval', $this->getAutoRefresh());
         $tpl = 'include/Dashlets/DashletGenericAutoRefresh.tpl';
         if ( $_REQUEST['action'] == "DynamicAction" ) {
             $tpl = 'include/Dashlets/DashletGenericAutoRefreshDynamic.tpl';
         }
 
         return $autoRefreshSS->fetch($tpl);
+    }
+
+    protected function getAutoRefresh()
+    {
+        global $sugar_config;
+
+        if (empty($this->autoRefresh) || $this->autoRefresh == -1)
+        {
+            $autoRefresh = 0;
+        }
+        elseif (!empty($sugar_config['dashlet_auto_refresh_min'])
+                && $this->autoRefresh > 0
+                && $sugar_config['dashlet_auto_refresh_min'] > $this->autoRefresh)
+        {
+            $autoRefresh = $sugar_config['dashlet_auto_refresh_min'];
+        }
+        else
+        {
+            $autoRefresh = $this->autoRefresh;
+        }
+
+        return $autoRefresh * 1000;
     }
 
     /**

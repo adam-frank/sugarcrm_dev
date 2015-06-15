@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -93,6 +93,7 @@ class JobQueueTest extends Sugar_PHPUnit_Framework_TestCase
     public function testCleanup()
     {
         $job = new SchedulersJob();
+        $job->update_date_modified = false;
         $job->status = SchedulersJob::JOB_STATUS_RUNNING;
         $job->scheduler_id = 'unittest';
         $job->execute_time = $GLOBALS['timedate']->nowDb();

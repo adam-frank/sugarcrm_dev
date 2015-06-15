@@ -1,6 +1,6 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -49,16 +49,19 @@ function EAPMChange() {
         var apiOpts = SUGAR.eapm[apiName];
 
         var urlObj = new SUGAR.forms.VisibilityAction('url',(apiOpts.needsUrl?'true':'false'), EAPMFormName);
+        urlObj.setContext(new SUGAR.forms.FormExpressionContext(this.form));
         if ( EAPMFormName == 'EditView' ) {
             EAPMSetFieldRequired('url',(apiOpts.needsUrl == true));
         }
 
         var userObj = new SUGAR.forms.VisibilityAction('name',((apiOpts.authMethod=='password')?'true':'false'), EAPMFormName);
+        userObj.setContext(new SUGAR.forms.FormExpressionContext(this.form));
         if ( EAPMFormName == 'EditView' ) {
             EAPMSetFieldRequired('name',(apiOpts.authMethod == 'password'));
         }
 
         var passObj = new SUGAR.forms.VisibilityAction('password',((apiOpts.authMethod=='password')?'true':'false'), EAPMFormName);
+        passObj.setContext(new SUGAR.forms.FormExpressionContext(this.form));
         if ( EAPMFormName == 'EditView' ) {
             EAPMSetFieldRequired('password',(apiOpts.authMethod == 'password'));
         }

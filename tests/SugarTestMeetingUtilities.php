@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -48,6 +48,9 @@ class SugarTestMeetingUtilities
         $name = 'Meeting';
         $meeting = new Meeting();
         $meeting->name = $name . $time;
+        $meeting->date_start = $GLOBALS['timedate']->getNow()->asDb();
+        $meeting->duration_hours = '0';
+        $meeting->duration_minutes = '15';
         if(!empty($id))
         {
             $meeting->new_with_id = true;
@@ -107,4 +110,3 @@ class SugarTestMeetingUtilities
         return $meeting_ids;
     }
 }
-?>

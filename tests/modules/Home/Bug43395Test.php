@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -74,7 +74,7 @@ class Bug43395Test extends Sugar_PHPUnit_Framework_OutputTestCase
     	$_REQUEST = array();
     	$_REQUEST['data'] = '{"form":"search_form","method":"query","modules":["Contacts"],"group":"or","field_list":["name","id"],"populate_list":["contact_c_basic","contact_id_c_basic"],"required_list":["parent_id"],"conditions":[{"name":"name","op":"like_custom","end":"%","value":""}],"order":"name","limit":"30","no_match_text":"No Match"}';
         $_REQUEST['query'] = self::$contact->first_name;
-        require_once 'modules/Home/quicksearchQuery.php';
+        require('modules/Home/quicksearchQuery.php');
 
         $json = getJSONobj();
 		$data = $json->decode(html_entity_decode($_REQUEST['data']));
@@ -105,4 +105,3 @@ class Bug43395Test extends Sugar_PHPUnit_Framework_OutputTestCase
     }
 
 }
-?>

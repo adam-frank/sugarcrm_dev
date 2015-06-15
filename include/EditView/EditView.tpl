@@ -1,7 +1,7 @@
 {*
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -111,7 +111,7 @@ class="yui-navset"
   {{/if}}
 </h4>
  {{/if}}
-<table width="100%" border="0" cellspacing="1" cellpadding="0" {{if $label == 'DEFAULT'}} id='Default_{$module}_Subpanel' {{else}} id='{{$label}}' {{/if}} class="edit view panelContainer">
+<table width="100%" border="0" cellspacing="1" cellpadding="0" {{if $label == 'DEFAULT'}} id='Default_{$module}_Subpanel' {{else}} id='{{$label}}' {{/if}} class="yui3-skin-sam edit view panelContainer">
 
 
 {{assign var='rowCount' value=0}}
@@ -210,7 +210,7 @@ class="yui-navset"
 			    {{foreach from=$colData.field.fields item=subField}}
 			        {{if $fields[$subField.name]}}
 			        	{counter name="panelFieldCount"}
-			            {{sugar_field parentFieldArray='fields'  accesskey=$ACCKEY tabindex=$tabindex vardef=$fields[$subField.name] displayType='EditView' displayParams=$subField.displayParams formName=$form_name}}&nbsp;
+			            {{sugar_field parentFieldArray='fields'  accesskey=$ACCKEY tabindex=$tabindex vardef=$fields[$subField.name] displayType='EditView' displayParams=$subField.displayParams formName=$form_name module=$module}}&nbsp;
 			        {{/if}}
 			    {{/foreach}}
 			{{elseif !empty($colData.field.customCode) && empty($colData.field.customCodeRenderField)}}
@@ -219,7 +219,7 @@ class="yui-navset"
 			{{elseif $fields[$colData.field.name]}}
 				{counter name="panelFieldCount"}
 			    {{$colData.displayParams}}
-				{{sugar_field parentFieldArray='fields'  accesskey=$ACCKEY tabindex=$tabindex vardef=$fields[$colData.field.name] displayType='EditView' displayParams=$colData.field.displayParams typeOverride=$colData.field.type formName=$form_name}}
+				{{sugar_field parentFieldArray='fields'  accesskey=$ACCKEY tabindex=$tabindex vardef=$fields[$colData.field.name] displayType='EditView' displayParams=$colData.field.displayParams typeOverride=$colData.field.type formName=$form_name module=$module}}
 			{{/if}}
 	{{if !empty($colData.field.customCode) && !empty($colData.field.customCodeRenderField)}}
 	    {counter name="panelFieldCount"}

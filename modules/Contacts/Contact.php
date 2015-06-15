@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -159,10 +159,8 @@ class Contact extends Person {
 	            ON accounts_contacts.account_id=accounts.id
 			";
 		}
-		$custom_join = $this->custom_fields->getJOIN();
-		if($custom_join){
-  				$query .= $custom_join['join'];
-		}
+        $custom_join = $this->getCustomJoin();
+        $query .= $custom_join['join'];
 
 
 	}
@@ -209,7 +207,7 @@ class Contact extends Person {
 			return parent::create_new_list_query($order_by, $where, $filter, $params, $show_deleted, $join_type, $return_array, $parentbean, $singleSelect);
 		}
 
-		$custom_join = $this->custom_fields->getJOIN();
+        $custom_join = $this->getCustomJoin();
 		// MFH - BUG #14208 creates alias name for select
 		$select_query = "SELECT ";
 		$select_query .= db_concat($this->table_name,array('first_name','last_name')) . " name, ";
@@ -219,9 +217,7 @@ class Contact extends Person {
                 accounts.id as account_id,
                 accounts.assigned_user_id account_id_owner,
                 users.user_name as assigned_user_name ";
-		if($custom_join){
-   				$select_query .= $custom_join['select'];
- 		}
+        $select_query .= $custom_join['select'];
  		$ret_array['select'] = $select_query;
 
  		$from_query = "
@@ -235,9 +231,7 @@ class Contact extends Person {
 	                    ON accounts_contacts.account_id=accounts.id AND accounts.deleted=0 ";
 		$from_query .= "LEFT JOIN email_addr_bean_rel eabl  ON eabl.bean_id = contacts.id AND eabl.bean_module = 'Contacts' and eabl.primary_address = 1 and eabl.deleted=0 ";
         $from_query .= "LEFT JOIN email_addresses ea ON (ea.id = eabl.email_address_id) ";
-		if($custom_join){
-  				$from_query .= $custom_join['join'];
-		}
+        $from_query .= $custom_join['join'];
 		$ret_array['from'] = $from_query;
 		$ret_array['from_min'] = 'from contacts';
 
@@ -258,11 +252,13 @@ class Contact extends Person {
 
 
 		$ret_array['where'] = $where_query;
-		$orderby_query = '';
-		if(!empty($order_by)){
-		    $orderby_query =  " ORDER BY ". $this->process_order_by($order_by, null);
-		}
-		$ret_array['order_by'] = $orderby_query ;
+        $ret_array['order_by'] = '';
+
+        //process order by and add if it's not empty
+        $order_by = $this->process_order_by($order_by);
+        if (!empty($order_by)) {
+            $ret_array['order_by'] = ' ORDER BY ' . $order_by;
+        }
 
 		if($return_array)
     	{
@@ -276,18 +272,17 @@ class Contact extends Person {
 
 
 
-	        function create_export_query(&$order_by, &$where, $relate_link_join='')
+        function create_export_query(&$order_by, &$where, $relate_link_join='')
         {
-        	$custom_join = $this->custom_fields->getJOIN(true, true,$where);
-			if($custom_join)
-				$custom_join['join'] .= $relate_link_join;
+            $custom_join = $this->getCustomJoin(true, true, $where);
+            $custom_join['join'] .= $relate_link_join;
                          $query = "SELECT
-                                contacts.*,email_addresses.email_address email_address,
-                                accounts.name as account_name,
+                                contacts.*,
+                                email_addresses.email_address email_address,
+                                '' email_addresses_non_primary, " . // email_addresses_non_primary needed for get_field_order_mapping()
+                                "accounts.name as account_name,
                                 users.user_name as assigned_user_name ";
-						if($custom_join){
-   							$query .= $custom_join['select'];
- 						}
+            $query .= $custom_join['select'];
 						 $query .= " FROM contacts ";
                          $query .= "LEFT JOIN users
 	                                ON contacts.assigned_user_id=users.id ";
@@ -300,9 +295,7 @@ class Contact extends Person {
 						$query .=  ' LEFT JOIN  email_addr_bean_rel on contacts.id = email_addr_bean_rel.bean_id and email_addr_bean_rel.bean_module=\'Contacts\' and email_addr_bean_rel.deleted=0 and email_addr_bean_rel.primary_address=1 ';
 						$query .=  ' LEFT JOIN email_addresses on email_addresses.id = email_addr_bean_rel.email_address_id ' ;
 
-						if($custom_join){
-  							$query .= $custom_join['join'];
-						}
+            $query .= $custom_join['join'];
 
 		$where_auto = "( accounts.deleted IS NULL OR accounts.deleted=0 )
                       AND contacts.deleted=0 ";
@@ -312,8 +305,10 @@ class Contact extends Person {
                 else
                         $query .= "where ".$where_auto;
 
-                if(!empty($order_by))
-                        $query .=  " ORDER BY ". $this->process_order_by($order_by, null);
+        $order_by = $this->process_order_by($order_by);
+        if (!empty($order_by)) {
+            $query .= ' ORDER BY ' . $order_by;
+        }
 
                 return $query;
         }
@@ -413,22 +408,16 @@ class Contact extends Person {
 	}
 
 	function get_list_view_data($filter_fields = array()) {
-		global $system_config;
-		global $current_user;
 
-		$this->_create_proper_name_field();
-		$temp_array = $this->get_list_view_array();
-		$temp_array['NAME'] = $this->name;
-		$temp_array['ENCODED_NAME'] = $this->name;
+        $temp_array = parent::get_list_view_data();
 
 		if($filter_fields && !empty($filter_fields['sync_contact'])){
 			$this->load_contacts_users_relationship();
 			$temp_array['SYNC_CONTACT'] = !empty($this->contacts_users_id) ? 1 : 0;
 		}
-		$temp_array['EMAIL1'] = $this->emailAddress->getPrimaryAddress($this);
-		$this->email1 = $temp_array['EMAIL1'];
-		$temp_array['EMAIL1_LINK'] = $current_user->getEmailLink('email1', $this, '', '', 'ListView');
-		$temp_array['EMAIL_AND_NAME1'] = "{$this->full_name} &lt;".$temp_array['EMAIL1']."&gt;";
+
+        $temp_array['EMAIL_AND_NAME1'] = "{$this->full_name} &lt;".$temp_array['EMAIL1']."&gt;";
+
 		return $temp_array;
 	}
 

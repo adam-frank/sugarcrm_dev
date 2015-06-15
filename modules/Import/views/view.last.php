@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -78,17 +78,23 @@ class ImportViewLast extends ImportView
         $dupeCount    = 0;
         $createdCount = 0;
         $updatedCount = 0;
-        $fp = sugar_fopen(ImportCacheFiles::getStatusFileName(),'r');
-        while (( $row = fgetcsv($fp, 8192) ) !== FALSE)
+        $fp = sugar_fopen(ImportCacheFiles::getStatusFileName(), 'r');
+        
+        // Read the data if we successfully opened file 
+        if ($fp !== false)
         {
-            $count         += (int) $row[0];
-            $errorCount    += (int) $row[1];
-            $dupeCount     += (int) $row[2];
-            $createdCount  += (int) $row[3];
-            $updatedCount  += (int) $row[4];
+            // Read rows 1 by 1 and add the info
+            while ($row = fgetcsv($fp, 8192))
+            {
+                $count         += (int) $row[0];
+                $errorCount    += (int) $row[1];
+                $dupeCount     += (int) $row[2];
+                $createdCount  += (int) $row[3];
+                $updatedCount  += (int) $row[4];
+            }
+            fclose($fp);
         }
-        fclose($fp);
-
+        
         $this->ss->assign("showUndoButton",FALSE);
         if($createdCount > 0)
         {
@@ -288,11 +294,19 @@ EOJAVASCRIPT;
 				WHERE users_last_import.assigned_user_id = '{$current_user->id}' AND users_last_import.bean_type='Prospect' AND users_last_import.bean_id=prospects.id
 				AND users_last_import.deleted=0 AND prospects.deleted=0";
 
+        $prospect_id='';
+        if(!empty($query)){
+            $res=$GLOBALS['db']->query($query);
+            while($row = $GLOBALS['db']->fetchByAssoc($res))
+            {
+                $prospect_id[]=$row['id'];
+            }
+        }
         $popup_request_data = array(
             'call_back_function' => 'set_return_and_save_background',
             'form_name' => 'DetailView',
             'field_to_name_array' => array(
-                'id' => 'subpanel_id',
+                'id' => 'prospect_list_id',
             ),
             'passthru_data' => array(
                 'child_field' => 'notused',
@@ -306,10 +320,9 @@ EOJAVASCRIPT;
                 'child_id'=>'id',
                 'link_attribute'=>'prospects',
                 'link_type'=>'default',	 //polymorphic or default
+                'prospect_ids'=>$prospect_id,
             )
         );
-
-        $popup_request_data['passthru_data']['query'] = urlencode($query);
 
         $json = getJSONobj();
         $encoded_popup_request_data = $json->encode($popup_request_data);

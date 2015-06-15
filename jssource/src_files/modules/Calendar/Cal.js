@@ -1,6 +1,6 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -280,13 +280,23 @@
 		
 		
 		if(params.type == "advanced"){
-		var elContent = document.createElement("div");
+			var elContent = document.createElement("div");
 			elContent.setAttribute("class","content");
 			if(params.content_style != "") {
 				elContent.style[params.content_style] = params.content_style_value;
 			}
 			elContent.innerHTML = params.item_text;
 			el.appendChild(elContent);
+
+			var related_to = document.createElement("div");
+			related_to.setAttribute("class","content");
+			if(params.content_style != "") {
+			    related_to.style[params.content_style] = params.content_style_value;
+			}
+			if (params.related_to){
+			    related_to.innerHTML = params.related_to;
+			}
+			el.appendChild(related_to);
 		}
 		
 
@@ -556,10 +566,18 @@
 				
 				var duration_coef = duration / CAL.t_step;
 				el.setAttribute("duration_coef",duration_coef);				
-				if(duration_coef < 1.75)
+				if(duration_coef < 1.75){
 					el.childNodes[1].style.display = "none";
-				else
+					if (el.childNodes[2]){
+					    el.childNodes[2].style.display = "none";
+					}
+				}
+				else {
 					el.childNodes[1].style.display = "";
+					if (el.childNodes[2]){
+					    el.childNodes[2].style.display = "";
+					}
+				}
 
 				var callback = {
 					success: function(o){
@@ -791,7 +809,7 @@
 				return;
 			}
 				
-			var head_text = CAL.get_header_text(item.type,item.time_start,item.name,item.record);					
+			var head_text = CAL.get_header_text(item.type,item.time_start,item.name,item.record);
 			var time_cell = item.timestamp - item.timestamp % (CAL.t_step * 60);			
 			var duration_coef; 
 			if(item.module_name == 'Tasks'){
@@ -804,6 +822,7 @@
 			}
 
 			var item_text = SUGAR.language.languages.app_list_strings[item.type +'_status_dom'][item.status];
+			var related_to = item.related_to;
 			
 			var content_style = "";
 			var content_style_value = "";
@@ -823,7 +842,8 @@
 				id_suffix: id_suffix,
 				item_text: item_text,
 				content_style: content_style,
-				content_style_value: content_style_value
+				content_style_value: content_style_value,
+				related_to: related_to
 			});
 			
 			YAHOO.util.Event.on(el,"click",function(){
@@ -844,12 +864,24 @@
 
 				CAL.cut_record(item.record + id_suffix);				
 				//CAL.arrange_slot("t_" + time_cell + suffix);
+
+				// Bug59353 - fix of appointment overlaps to another user on shared Calendar
+				if (CAL.view == "shared"){
+				    var end_time = $("#"+slot.id).parents("div:first").children("div:last").attr("time");
+				    var end_time_id = $("#"+slot.id).parents("div:first").children("div:last").attr("id");
+				    if (end_time && end_time_id){
+				        var end_timestamp = parseInt(end_time_id.match(/t_([0-9]+)_.*/)[1]) + 1800;
+				        var share_coef = (end_timestamp - parseInt(item.timestamp)) / 1800;
+				        if (share_coef < duration_coef)
+				            el.style.height = parseInt((CAL.slot_height + 1) * share_coef - 1) + "px";
+				    }
+				}
 			}
 				
 	}
 
 	CAL.get_header_text = function (type,time_start,text,record){
-			var start_text = "<span class='start_time'>" + time_start + "</span> " + text;
+			var start_text = (CAL.view=='month')?("<span class='start_time'>" + time_start + "</span> " + text) : text;
 			return start_text;
 	}
 	
@@ -1616,8 +1648,34 @@
 			var module_name = CAL.get("current_module").value;
 			
 			if(CAL.view == 'shared'){
-				user_name = cell.parentNode.parentNode.parentNode.parentNode.parentNode.getAttribute("user_name");
-				user_id = cell.parentNode.parentNode.parentNode.parentNode.parentNode.getAttribute("user_id");
+				// Pick the div that contains 2 custom attributes we
+				// use for storing values in case of 'shared' view
+				parentWithUserValues = $('div[user_id][user_name]');
+				// Pull out the values
+				user_name = parentWithUserValues.attr('user_name');
+				user_id = parentWithUserValues.attr('user_id');
+
+				// Shared by multiple users, need to get attributes from user whom is clicked
+				if (parentWithUserValues.length > 1) {
+				    var theUserName, theUserId;
+				    var theUser = cell.parentNode;
+				    while (theUser) {
+				        if (theUser.getAttribute("user_name") && theUser.getAttribute("user_id")) {
+				            theUserName = theUser.getAttribute("user_name");
+				            theUserId = theUser.getAttribute("user_id");
+				            break;
+				        }
+				        else {
+				            theUser = theUser.parentNode;
+				        }
+				    }
+				    // Found user in the parentNode iteration, use it
+				    if (theUserName && theUserId) {
+				        user_name = theUserName;
+				        user_id = theUserId;
+				    }
+				}
+
 				CAL.GR_update_user(user_id);
 			}else{
 				user_id = CAL.current_user_id;
@@ -1965,28 +2023,30 @@
 		if (CAL.view == 'year') {
 			return;
 		}
-		
-		var day_width;
-		var cal_width = document.getElementById("cal-width-helper").offsetWidth;
-		
-		if (CAL.print) {
+
+        var container_width   = document.getElementById("cal-width-helper").offsetWidth;
+        var left_column_width = 53;
+        var scroll_padding    = 0;
+
+        if (CAL.print) {
             if (CAL.view == "day")
-			    cal_width = 720;
+                container_width = 720;
             else
-                cal_width = 800;
-		}
-			
-		var left_width = 80;
-		if(CAL.style == "basic"){
-			if(CAL.view != "month"){
-				left_width = 20;
-			}else
-				left_width = 60;		
-		}						
-		
+                container_width = 800;
+        }
+        else {
+            var is_scrollable = document.getElementById("cal-scrollable");
+            if (is_scrollable) {
+                scroll_padding = 30;
+            }
+        }
+
+        var data_width = container_width - left_column_width - scroll_padding;
+
+        var num_columns;
 		if(CAL.view == "day"){
-			day_width = parseInt((cal_width - left_width - 10));	
-			if(typeof control_call == "undefined" || !control_call){
+            num_columns = 1;
+            if(typeof control_call == "undefined" || !control_call){
 				setTimeout(function(){
 					CAL.fit_grid(true);
 					setTimeout(function(){
@@ -1994,24 +2054,37 @@
 					},100);					
 				},100);
 			}
-		}else{							
-			day_width = parseInt((cal_width - left_width) / 7);
-		}			
-			
-		var nodes = CAL.query("#cal-grid div.col");
-		CAL.each(nodes, function(i,v){		
-			nodes[i].style.width = day_width + "px";
-		});
-		
-		var nodes = CAL.query("#cal-grid .cal-basic .act_item");	
-		CAL.each(nodes, function(i,v){	
-			var days = nodes[i].getAttribute('days');	
-			nodes[i].style.width = (day_width * days - 1) + "px";
-		});
-		document.getElementById("cal-grid").style.visibility = "";
+		}else{
+            num_columns = 7;
+		}
 
-	}
-	
+        var columns_width = CAL.calculate_columns_width(data_width, num_columns);
+        var cell_nodes = CAL.query("#cal-grid div.col");
+        CAL.each(cell_nodes, function(i)
+        {
+            cell_nodes[i].style.width = columns_width[i % num_columns] + "px";
+        });
+
+        document.getElementById("cal-grid").style.visibility = "";
+    };
+
+    CAL.calculate_columns_width = function(width, count)
+    {
+        var result    = [];
+        var integer   = Math.floor(width / count);
+        var remainder = width - count * integer;
+        var dispensed = 0;
+        for (var i = 1, value; i <= count; i++)
+        {
+            value = integer;
+            if (dispensed * count < i * remainder) {
+                value++;
+                dispensed++;
+            }
+            result.push(value);
+        }
+        return result;
+    };
 
 	YAHOO.util.DDCAL = function(id, sGroup, config){ 
 		this.cont = config.cont; 

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -53,6 +53,7 @@ $entry_point_registry = array(
 	'pdf' => array('file' => 'pdf.php', 'auth' => true),
 	'minify' => array('file' => 'jssource/minify.php', 'auth' => true),
     'json_server' => array('file' => 'json_server.php', 'auth' => true),
+    'get_url' => array('file' => 'get_url.php', 'auth' => true),
 	'HandleAjaxCall' => array('file' => 'HandleAjaxCall.php', 'auth' => true),
 	'TreeData' => array('file' => 'TreeData.php', 'auth' => true),
     'image' => array('file' => 'modules/Campaigns/image.php', 'auth' => false),
@@ -70,5 +71,6 @@ $entry_point_registry = array(
     'getYUIComboFile' => array('file' => 'include/javascript/getYUIComboFile.php', 'auth' => false),
     'UploadFileCheck' => array('file' => 'modules/Configurator/UploadFileCheck.php', 'auth' => true),
     'SAML'=>  array('file' => 'modules/Users/authentication/SAMLAuthenticate/index.php', 'auth' => false),
+    'jslang'=> array('file' => 'include/language/getJSLanguage.php', 'auth' => true),
 );
 ?>

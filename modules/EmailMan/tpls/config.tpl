@@ -1,7 +1,7 @@
 <!--
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -520,8 +520,12 @@ function sendTestEmail()
     var callbackOutboundTest = {
     	success	: function(o) {
     		hideOverlay();
-    		overlay("{/literal}{$APP.LBL_EMAIL_TEST_OUTBOUND_SETTINGS}{literal}", "{/literal}{$APP.LBL_EMAIL_TEST_NOTIFICATION_SENT}{literal}", 'alert');
-    	}
+			var responseObject = YAHOO.lang.JSON.parse(o.responseText);
+			if (responseObject.status)
+				overlay("{/literal}{$APP.LBL_EMAIL_TEST_OUTBOUND_SETTINGS}{literal}", "{/literal}{$APP.LBL_EMAIL_TEST_NOTIFICATION_SENT}{literal}", 'alert');
+			else
+				overlay("{/literal}{$APP.LBL_EMAIL_TEST_OUTBOUND_SETTINGS}{literal}", responseObject.errorMessage, 'alert');
+		}
     };
     var smtpServer = document.getElementById('mail_smtpserver').value;
     var smtpPort = document.getElementById('mail_smtpport').value;
@@ -530,7 +534,7 @@ function sendTestEmail()
     var mail_sendtype = document.getElementById('mail_sendtype').value;
 
     var from_name = document.getElementById('notify_fromname').value;
-	var postDataString = 'mail_name=system&mail_sendtype=' + mail_sendtype + '&mail_smtpserver=' + smtpServer + "&mail_smtpport=" + smtpPort + "&mail_smtpssl=" + smtpssl +
+	var postDataString = 'mail_type=system&mail_sendtype=' + mail_sendtype + '&mail_smtpserver=' + smtpServer + "&mail_smtpport=" + smtpPort + "&mail_smtpssl=" + smtpssl +
 	                      "&mail_smtpauth_req=" + mailsmtpauthreq.checked + "&mail_smtpuser=" + trim(document.getElementById('mail_smtpuser').value) +
 	                      "&mail_smtppass=" + trim(document.getElementById('mail_smtppass').value) + "&outboundtest_to_address=" + encodeURIComponent(toAddress) +
                           "&outboundtest_from_address=" + fromAddress + "&mail_from_name=" + from_name;
@@ -646,7 +650,7 @@ function changeEmailScreenDisplay(smtptype, clear)
 
     switch (smtptype) {
     case "yahoomail":
-        document.getElementById("mail_smtpserver").value = 'plus.smtp.mail.yahoo.com';
+        document.getElementById("mail_smtpserver").value = 'smtp.mail.yahoo.com';
         document.getElementById("mail_smtpport").value = '465';
         document.getElementById("mail_smtpauth_req").checked = true;
         var ssl = document.getElementById("mail_smtpssl");
@@ -663,7 +667,7 @@ function changeEmailScreenDisplay(smtptype, clear)
         document.getElementById("mail_smtpuser_label").innerHTML = '{/literal}{$MOD.LBL_YAHOOMAIL_SMTPUSER}{literal}';
         break;
     case "gmail":
-        if(document.getElementById("mail_smtpserver").value == "" || document.getElementById("mail_smtpserver").value == 'plus.smtp.mail.yahoo.com') {
+        if(document.getElementById("mail_smtpserver").value == "" || document.getElementById("mail_smtpserver").value == 'smtp.mail.yahoo.com') {
             document.getElementById("mail_smtpserver").value = 'smtp.gmail.com';
             document.getElementById("mail_smtpport").value = '587';
             document.getElementById("mail_smtpauth_req").checked = true;
@@ -681,7 +685,7 @@ function changeEmailScreenDisplay(smtptype, clear)
         document.getElementById("mail_smtpuser_label").innerHTML = '{/literal}{$MOD.LBL_GMAIL_SMTPUSER}{literal}';
         break;
     case "exchange":
-        if ( document.getElementById("mail_smtpserver").value == 'plus.smtp.mail.yahoo.com'
+        if ( document.getElementById("mail_smtpserver").value == 'smtp.mail.yahoo.com'
                 || document.getElementById("mail_smtpserver").value == 'smtp.gmail.com' ) {
             document.getElementById("mail_smtpserver").value = '';
         }

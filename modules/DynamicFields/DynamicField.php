@@ -4,7 +4,7 @@ if (! defined ( 'sugarEntry' ) || ! sugarEntry)
 
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -195,7 +195,9 @@ class DynamicField {
                 //if it's still not loaded we really don't have anything useful to cache
                 if(empty($GLOBALS['dictionary'][$object]['fields']))return;
             }
-            $GLOBALS ['dictionary'] [$object] ['custom_fields'] = false;
+            if (!isset($GLOBALS['dictionary'][$object]['custom_fields'])) {
+                $GLOBALS['dictionary'][$object]['custom_fields'] = false;
+            }
             if (! empty ( $GLOBALS ['dictionary'] [$object] )) {
                 if (! empty ( $result )) {
                     // First loop to add
@@ -252,7 +254,10 @@ class DynamicField {
     */
   function getJOIN( $expandedList = false , $includeRelates = false, &$where = false){
         if(!$this->bean->hasCustomFields()){
-            return false;
+            return array(
+                'select' => '',
+                'join' => ''
+            );
         }
 
         if (empty($expandedList) )
@@ -300,7 +305,7 @@ class DynamicField {
 
     }
 
-   function getRelateJoin($field_def, $joinTableAlias) {
+   function getRelateJoin($field_def, $joinTableAlias, $withIdName = true) {
         if (empty($field_def['type']) || $field_def['type'] != "relate") {
             return false;
         }
@@ -334,7 +339,7 @@ class DynamicField {
         $relID = $field_def['id_name'];
         $ret_array['rel_table'] = $rel_table;
         $ret_array['name_field'] = $name_field;
-        $ret_array['select'] = ", {$tableName}.{$relID}, {$name_field} {$field_def['name']} ";
+        $ret_array['select'] = ($withIdName ? ", {$tableName}.{$relID}" : "") . ", {$name_field} {$field_def['name']} ";
         $ret_array['from'] = " LEFT JOIN $rel_table $joinTableAlias ON $tableName.$relID = $joinTableAlias.id"
                             . " AND $joinTableAlias.deleted=0 ";
         return $ret_array;
@@ -493,6 +498,7 @@ class DynamicField {
     function fieldExists($name = '', $type = ''){
         // must get the vardefs from the GLOBAL array as $bean->field_defs does not contain the values from the cache at this point
         // TODO: fix this - saveToVardefs() updates GLOBAL['dictionary'] correctly, obtaining its information directly from the fields_meta_data table via buildCache()...
+        $name = $this->getDBName($name);
         $vardefs = $GLOBALS['dictionary'][$this->bean->object_name]['fields'];
         if(!empty($vardefs)){
             if(empty($type) && empty($name))

@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -79,24 +79,6 @@ if (isset($this->field_defs['created_by']))
 
 if (isset($this->field_defs['modified_user_id']))
 {
-    if (!isset($this->field_defs['modified_user_name']))
-    {
-        $this->field_defs['modified_user_name'] = array();
-    }
-
-    $this->field_defs['modified_user_name'] = array_merge(
-        $this->field_defs['modified_user_name'],
-        array(
-            'name' => 'modified_user_name',
-            'rname' => 'user_name',
-            'vname' => 'LBL_MODIFIED',
-            'type' => 'relate',
-            'reportable' => false,
-            'source' => 'non-db',
-            'link' => 'modified_user_link'
-        )
-    );
-
     if (!isset($this->field_defs['modified_by_name']))
     {
         $this->field_defs['modified_by_name'] = array();

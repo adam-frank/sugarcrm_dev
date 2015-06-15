@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -184,6 +184,9 @@ class SubPanel
 
 		$ListView->is_dynamic = true;
 		$ListView->records_per_page = $sugar_config['list_max_entries_per_subpanel'] + 0;
+		if (isset($this->subpanel_defs->_instance_properties['records_per_page'])) {
+		    $ListView->records_per_page = $this->subpanel_defs->_instance_properties['records_per_page'] + 0;
+		}
 		$ListView->start_link_wrapper = "javascript:showSubPanel('".$this->subpanel_id."','";
 		$ListView->subpanel_id = $this->subpanel_id;
 		$ListView->end_link_wrapper = "',true);";

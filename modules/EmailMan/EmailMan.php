@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -112,13 +112,13 @@ class EmailMan extends SugarBean{
 			$query['where'] = "WHERE ".$where_auto;
 
     	if(isset($params['group_by'])) {
-			$query['order_by'] .= " GROUP BY {$params['group_by']}";
+            $query['group_by'] .= " GROUP BY {$params['group_by']}";
 		}
 
-		if($order_by != "")
-		{
-			$query['order_by'] = ' ORDER BY ' . $this->process_order_by($order_by, null);
-		}
+        $order_by = $this->process_order_by($order_by);
+        if (!empty($order_by)) {
+            $query['order_by'] = ' ORDER BY ' . $order_by;
+        }
 
 		if ($return_array) {
 			return $query;
@@ -171,11 +171,10 @@ class EmailMan extends SugarBean{
 		else
 			$query .= "WHERE ".$where_auto;
 
-
-		if($order_by != "")
-		{
-			$query .= ' ORDER BY ' . $this->process_order_by($order_by, null);
-		}
+        $order_by = $this->process_order_by($order_by);
+        if (!empty($order_by)) {
+            $query .= ' ORDER BY ' . $order_by;
+        }
 
 		return $query;
 
@@ -211,10 +210,11 @@ class EmailMan extends SugarBean{
 		else
 			$query .= "where ".$where_auto;
 
-		if($order_by != "")
-		{
-			$query .= ' ORDER BY ' . $this->process_order_by($order_by, null);
-		}
+        $order_by = $this->process_order_by($order_by);
+        if (!empty($order_by)) {
+            $query .= ' ORDER BY ' . $order_by;
+        }
+
 		return $query;
 	}
 
@@ -422,8 +422,11 @@ class EmailMan extends SugarBean{
                     break;
             }
 
+            //serialize data to be passed into Link2->add() function
+            $campaignData = serialize($macro_nv);
+
             //required for one email per campaign per marketing message.
-            $this->ref_email->$rel_name->add($this->related_id,array('campaign_data'=>serialize($macro_nv)));
+            $this->ref_email->$rel_name->add($this->related_id,array('campaign_data'=>$this->db->quote($campaignData)));
        }
        return $this->ref_email->id;
     }
@@ -589,7 +592,10 @@ class EmailMan extends SugarBean{
 
 		}
 
-		$module = new $class();
+        //prepare variables for 'set_as_sent' function
+        $this->target_tracker_key = create_guid();
+
+        $module = new $class();
 		$module->retrieve($this->related_id);
 		$module->emailAddress->handleLegacyRetrieve($module);
 
@@ -637,7 +643,7 @@ class EmailMan extends SugarBean{
 			}
 
 			//test for duplicate email address by marketing id.
-            $dup_query="select id from campaign_log where more_information='".$module->email1."' and marketing_id='".$this->marketing_id."'";
+            $dup_query="select id from campaign_log where more_information='".$this->db->quote($module->email1)."' and marketing_id='".$this->marketing_id."'";
 			$dup=$this->db->query($dup_query);
 			$dup_row=$this->db->fetchByAssoc($dup);
 			if (!empty($dup_row)) {
@@ -646,7 +652,6 @@ class EmailMan extends SugarBean{
 				return true;
 			}
 
-			$this->target_tracker_key=create_guid();
 
 			//fetch email marketing.
 			if (empty($this->current_emailmarketing) or !isset($this->current_emailmarketing)) {
@@ -735,14 +740,16 @@ class EmailMan extends SugarBean{
 			$mail->ClearReplyTos();
 			$mail->Sender	= $this->mailbox_from_addr;
 			$mail->From     = $this->mailbox_from_addr;
-			$mail->FromName = $this->current_emailmarketing->from_name;
+			$mail->FromName = $locale->translateCharsetMIME(trim($this->current_emailmarketing->from_name), 'UTF-8', $OBCharset);
 			$mail->ClearCustomHeaders();
             $mail->AddCustomHeader('X-CampTrackID:'.$this->target_tracker_key);
             //CL - Bug 25256 Check if we have a reply_to_name/reply_to_addr value from the email marketing table.  If so use email marketing entry; otherwise current mailbox (inbound email) entry
 			$replyToName = empty($this->current_emailmarketing->reply_to_name) ? $this->current_mailbox->get_stored_options('reply_to_name',$mail->FromName,null) : $this->current_emailmarketing->reply_to_name;
 			$replyToAddr = empty($this->current_emailmarketing->reply_to_addr) ? $this->current_mailbox->get_stored_options('reply_to_addr',$mail->From,null) : $this->current_emailmarketing->reply_to_addr;
 
-			$mail->AddReplyTo($replyToAddr,$locale->translateCharsetMIME(trim($replyToName), 'UTF-8', $OBCharset));
+            if (!empty($replyToAddr)) {
+                $mail->AddReplyTo($replyToAddr,$locale->translateCharsetMIME(trim($replyToName), 'UTF-8', $OBCharset));
+            }
 
 			//parse and replace bean variables.
             $macro_nv=array();
@@ -937,18 +944,15 @@ class EmailMan extends SugarBean{
 
      }
 
-    function create_export_query(&$order_by, &$where) {
-        $custom_join = $this->custom_fields->getJOIN(true, true,$where);
+    function create_export_query(&$order_by, &$where)
+    {
+        $custom_join = $this->getCustomJoin(true, true, $where);
         $query = "SELECT emailman.*";
-        if($custom_join){
-            $query .= $custom_join['select'];
-        }
+        $query .= $custom_join['select'];
 
         $query .= " FROM emailman ";
 
-        if($custom_join){
-            $query .= $custom_join['join'];
-        }
+        $query .= $custom_join['join'];
 
         $where_auto = "( emailman.deleted IS NULL OR emailman.deleted=0 )";
 
@@ -957,9 +961,9 @@ class EmailMan extends SugarBean{
         else
             $query .= "where ".$where_auto;
 
-        if(!empty($order_by))
-        {
-            $query .=  ' ORDER BY '. $this->process_order_by($order_by, null);
+        $order_by = $this->process_order_by($order_by);
+        if (!empty($order_by)) {
+            $query .= ' ORDER BY ' . $order_by;
         }
 
         return $query;

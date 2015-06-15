@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -102,6 +102,7 @@ require_once 'SugarTestObjectUtilities.php';
 require_once 'SugarTestProjectUtilities.php';
 require_once 'SugarTestProjectTaskUtilities.php';
 require_once 'SugarTestUserUtilities.php';
+require_once 'SugarTestEmailAddressUtilities.php';
 require_once 'SugarTestLangPackCreator.php';
 require_once 'SugarTestThemeUtilities.php';
 require_once 'SugarTestContactUtilities.php';
@@ -116,6 +117,10 @@ require_once 'SugarTestTrackerUtility.php';
 require_once 'SugarTestImportUtilities.php';
 require_once 'SugarTestMergeUtilities.php';
 require_once 'SugarTestTaskUtilities.php';
+require_once 'SugarTestOpportunityUtilities.php';
+require_once 'SugarTestCurrencyUtilities.php';
+require_once 'SugarTestRelationshipUtilities.php';
+require_once 'SugarTestSugarEmailAddressUtilities.php';
 
 $GLOBALS['db']->commit();
 
@@ -267,6 +272,8 @@ class SugarMockLogger
 	}
 }
 
+require_once('ModuleInstall/ModuleInstaller.php');
+
 /**
  * Own exception for SugarTestHelper class
  *
@@ -300,6 +307,11 @@ class SugarTestHelper
      * @var array of system preference of SugarCRM as theme etc. They are storing on init one time and restoring each tearDown
      */
     protected static $systemVars = array();
+
+    /**
+     * @var array of modules which we should refresh on tearDown.
+     */
+    protected static $cleanModules = array();
 
     /**
      * @var bool is SugarTestHelper inited or not. Just to skip initialization on the second and others call of init method
@@ -461,7 +473,7 @@ class SugarTestHelper
 
         // Restoring of theme
         SugarThemeRegistry::set(self::$systemVars['SugarThemeRegistry']->dirName);
-
+        SugarCache::$isCacheReset = false;
         return true;
     }
 
@@ -529,9 +541,20 @@ class SugarTestHelper
     protected static function setUp_moduleList()
     {
         self::$registeredVars['moduleList'] = true;
-        self::setUp_app_list_strings();
-        $GLOBALS['moduleList'] = $GLOBALS['app_list_strings']['moduleList'];
+        global $moduleList;
+        require('include/modules.php');
         return true;
+    }
+
+    /**
+     * Reinitialization of $moduleList in global scope because we can't unset that variable
+     *
+     * @static
+     * @return bool is variable setuped or not
+     */
+    protected static function tearDown_moduleList()
+    {
+        return self::setUp_moduleList();
     }
 
     /**
@@ -616,6 +639,112 @@ class SugarTestHelper
     {
         self::$registeredVars['mod_strings'] = true;
         $GLOBALS['mod_strings'] = return_module_language($GLOBALS['current_language'], $params[0]);
+        return true;
+    }
+
+    /**
+     * Registration of $dictionary in global scope
+     *
+     * @static
+     * @return bool is variable setuped or not
+     */
+    protected static function setUp_dictionary()
+    {
+        self::setUp('beanFiles');
+        self::setUp('beanList');
+        self::$registeredVars['dictionary'] = true;
+
+        global $dictionary;
+        $dictionary = array();
+        $moduleInstaller = new ModuleInstaller();
+        $moduleInstaller->silent = true;
+        $moduleInstaller->rebuild_tabledictionary();
+        require 'modules/TableDictionary.php';
+
+        foreach($GLOBALS['beanList'] as $k => $v)
+        {
+            VardefManager::loadVardef($k, $v);
+        }
+        return true;
+    }
+
+    /**
+     * Reinitialization of $dictionary in global scope because we can't unset that variable
+     *
+     * @static
+     * @return bool is variable setuped or not
+     */
+    protected static function tearDown_dictionary()
+    {
+        return self::setUp_dictionary();
+    }
+
+    /**
+     * Cleaning caches and refreshing vardefs
+     *
+     * @static
+     * @param string $lhs_module left module from relation
+     * @param string $rhs_module right module from relation
+     * @return bool are caches refreshed or not
+     */
+    protected static function setUp_relation(array $params)
+    {
+        if (empty($params[0]) || empty($params[1]))
+        {
+            throw new SugarTestHelperException('setUp("relation") requires two parameters');
+        }
+        list($lhs_module, $rhs_module) = $params;
+        self::$registeredVars['relation'] = true;
+        self::$cleanModules[] = $lhs_module;
+
+        LanguageManager::clearLanguageCache($lhs_module);
+        if ($lhs_module != $rhs_module)
+        {
+            self::$cleanModules[] = $rhs_module;
+            LanguageManager::clearLanguageCache($rhs_module);
+        }
+
+        self::setUp('dictionary');
+
+        VardefManager::$linkFields = array();
+        VardefManager::clearVardef();
+        VardefManager::refreshVardefs($lhs_module, BeanFactory::getObjectName($lhs_module));
+        if ($lhs_module != $rhs_module)
+        {
+            VardefManager::refreshVardefs($rhs_module, BeanFactory::getObjectName($rhs_module));
+        }
+        SugarRelationshipFactory::rebuildCache();
+
+        return true;
+    }
+
+    /**
+     * Doing the same things like setUp but for initialized list of modules
+     *
+     * @static
+     * @return bool are caches refreshed or not
+     */
+    protected static function tearDown_relation()
+    {
+        SugarRelationshipFactory::deleteCache();
+
+        $modules = array_unique(self::$cleanModules);
+        foreach ($modules as $module)
+        {
+            LanguageManager::clearLanguageCache($module);
+        }
+
+        self::tearDown('dictionary');
+
+        VardefManager::$linkFields = array();
+        VardefManager::clearVardef();
+        foreach($modules as $module)
+        {
+            VardefManager::refreshVardefs($module, BeanFactory::getBeanName($module));
+        }
+        SugarRelationshipFactory::rebuildCache();
+
+        self::$cleanModules = array();
         return true;
     }
 }

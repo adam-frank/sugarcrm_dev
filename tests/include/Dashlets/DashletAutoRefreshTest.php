@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -161,7 +161,7 @@ class DashletAutoRefreshTest extends Sugar_PHPUnit_Framework_TestCase
         $this->assertEmpty($dashlet->processAutoRefresh());
     }
     
-    public function testProcessAutoRefreshReturnsNothingIfAutoRefreshingIsDisabled()
+    public function testProcessAutoRefreshReturnsNothingIfSystemLevelAutoRefreshingIsDisabled()
     {
         $dashlet = new DashletAutoRefreshTestMock('unit_test_run');
         $GLOBALS['sugar_config']['dashlet_auto_refresh_min'] = -1;
@@ -171,6 +171,33 @@ class DashletAutoRefreshTest extends Sugar_PHPUnit_Framework_TestCase
         $dashlet->seedBean->object_name = 'unit_test';
         
         $this->assertEmpty($dashlet->processAutoRefresh());
+    }
+
+    /**
+     * Tests whether dashlet ignores system settings if user disables auto refresh.
+     * @bug 52331
+     * @dataProvider refreshCases
+     * @param int $systemValue
+     * @param int $dashletValue
+     * @param int $forceSystemValue
+     */
+    public function testAllowAutoRefresh($systemValue, $dashletValue, $forceSystemValue)
+    {
+        $dashlet = new DashletAutoRefreshTestMock('unit_test_run');
+        $GLOBALS['sugar_config']['dashlet_auto_refresh_min'] = $systemValue;
+        $dashlet->autoRefresh = $dashletValue;
+
+        $this->assertEquals($forceSystemValue, $dashlet->getAutoRefresh());
+    }
+
+    public function refreshCases()
+    {
+        return array(
+            array(20, null, 0),
+            array(20, 10, 20000),
+            array(10, 20, 20000),
+            array(20, -1, 0)
+        );
     }
 }
 
@@ -189,5 +216,10 @@ class DashletAutoRefreshTestMock extends Dashlet
     public function processAutoRefresh() 
     {
         return parent::processAutoRefresh();
+    }
+
+    public function getAutoRefresh()
+    {
+        return parent::getAutoRefresh();
     }
 }

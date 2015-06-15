@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -79,7 +79,8 @@ class SubPanelTiles
         if(isset($_REQUEST['subpanelTabs']))
             $_SESSION['subpanelTabs'] = $_REQUEST['subpanelTabs'];
 
-        require_once 'include/tabConfig.php' ; // include/tabConfig.php in turn includes the customized file at custom/include/tabConfig.php...
+        // include/tabConfig.php in turn includes the customized file at custom/include/tabConfig.php
+        require 'include/tabConfig.php';
 
         $subpanelTabsPref = $current_user->getPreference('subpanel_tabs');
         if(!isset($subpanelTabsPref)) $subpanelTabsPref = $GLOBALS['sugar_config']['default_subpanel_tabs'];
@@ -262,6 +263,10 @@ if(document.DetailView != null &&
 	        $rel->load_relationship_meta();
         }
 
+        // this array will store names of sub-panels that can contain items
+        // of each module
+        $module_sub_panels = array();
+
         foreach ($tabs as $tab)
 		{
 			//load meta definition of the sub-panel.
@@ -290,6 +295,23 @@ if(document.DetailView != null &&
 					}
 				}
 			}
+
+            if ($thisPanel->isCollection()) {
+                // collect names of sub-panels that may contain items of each module
+                $collection_list = $thisPanel->get_inst_prop_value('collection_list');
+                if (is_array($collection_list)) {
+                    foreach ($collection_list as $data) {
+                        if (!empty($data['module'])) {
+                            $module_sub_panels[$data['module']][$tab] = true;
+                        }
+                    }
+                }
+            } else {
+                $module = $thisPanel->get_module_name();
+                if (!empty($module)) {
+                    $module_sub_panels[$module][$tab] = true;
+                }
+            }
 
 			echo '<li class="noBullet" id="whole_subpanel_' . $tab . '">';
 
@@ -328,7 +350,7 @@ if(document.DetailView != null &&
 
 			if (empty($this->show_tabs))
 			{
-				$show_icon_html = SugarThemeRegistry::current()->getImage( 'advanced_search', 'border="0 align="absmiddle""',null,null,'.gif',translate('LBL_SHOW'));
+				$show_icon_html = SugarThemeRegistry::current()->getImage( 'advanced_search', 'border="0" align="absmiddle"',null,null,'.gif',translate('LBL_SHOW'));
 				$hide_icon_html = SugarThemeRegistry::current()->getImage( 'basic_search', 'border="0" align="absmiddle"',null,null,'.gif',translate('LBL_HIDE'));
 
  		 		$max_min = "<a name=\"$tab\"> </a><span id=\"show_link_".$tab."\" style=\"display: $opp_display\"><a href='#' class='utilsLink' onclick=\"current_child_field = '".$tab."';showSubPanel('".$tab."',null,null,'".$layout_def_key."');document.getElementById('show_link_".$tab."').style.display='none';document.getElementById('hide_link_".$tab."').style.display='';return false;\">"
@@ -419,6 +441,14 @@ EOQ;
 EOQ;
         }
 
+        $module_sub_panels = array_map('array_keys', $module_sub_panels);
+        $module_sub_panels = json_encode($module_sub_panels);
+        echo <<<EOQ
+<script>
+var ModuleSubPanels = $module_sub_panels;
+</script>
+EOQ;
+
 		$ob_contents = ob_get_contents();
 		ob_end_clean();
 		return $ob_contents;
@@ -458,7 +488,10 @@ EOQ;
 			}
 			else
 			{
-				$buttons[] = $layout_manager->widgetDisplay($widget_data);
+                $button = $layout_manager->widgetDisplay($widget_data);
+                if ($button) {
+                    $buttons[] = $button;
+                }
 			}
 
         }

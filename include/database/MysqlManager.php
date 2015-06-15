@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -617,6 +617,12 @@ class MysqlManager extends DBManager
 					return "DATE_ADD($string, INTERVAL {$additional_parameters[0]} {$additional_parameters[1]})";
 			case 'add_time':
 					return "DATE_ADD($string, INTERVAL + CONCAT({$additional_parameters[0]}, ':', {$additional_parameters[1]}) HOUR_MINUTE)";
+            case 'add_tz_offset' :
+                $getUserUTCOffset = $GLOBALS['timedate']->getUserUTCOffset();
+                $operation = $getUserUTCOffset < 0 ? '-' : '+';
+                return $string . ' ' . $operation . ' INTERVAL ' . abs($getUserUTCOffset) . ' MINUTE';
+            case 'avg':
+                return "avg($string)";
 		}
 
 		return $string;
@@ -1040,7 +1046,7 @@ class MysqlManager extends DBManager
 			}
 		}
 		if (!empty($sql)) {
-			$sql = "ALTER TABLE $tablename ".join(",", $sql);
+            $sql = "ALTER TABLE $tablename " . join(",", $sql) . ";";
 			if($execute)
 				$this->query($sql);
 		} else {

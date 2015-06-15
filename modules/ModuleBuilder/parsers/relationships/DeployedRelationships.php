@@ -3,7 +3,7 @@ if (! defined ( 'sugarEntry' ) || ! sugarEntry)
     die ( 'Not A Valid Entry Point' ) ;
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -162,7 +162,10 @@ class DeployedRelationships extends AbstractRelationships implements Relationshi
     	require_once ('modules/Administration/QuickRepairAndRebuild.php') ;
     	$mi = new ModuleInstaller();
     	$mi->silent = true;
+        $mi->id_name = 'custom' . $rel_name; // provide the moduleinstaller with a unique name for this relationship - normally this value is set to the package key...
     	$mi->uninstall_relationship("custom/metadata/{$rel_name}MetaData.php");
+        $mi->uninstallLabels('custom/Extension/modules/relationships/language/',$rel->buildLabels());
+        $mi->uninstallExtLabels($rel->buildLabels());
     	
     	// now clear all caches so that our changes are visible
     	Relationship::delete_cache();

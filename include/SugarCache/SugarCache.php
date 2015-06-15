@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -128,6 +128,18 @@ class SugarCache
                     break;
                 }
             }
+        }
+    }
+
+    /**
+     * Try to reset file from caches
+     */
+    public static function cleanFile( $file )
+    {
+        // APC
+        if ( function_exists('apc_delete_file') && ini_get('apc.stat') == 0 )
+        {
+            apc_delete_file( $file );
         }
     }
 }

@@ -1,7 +1,7 @@
 {*
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -116,8 +116,9 @@
                                 </th>
                             </tr>
                         </table>
-                            <!-- hide field if user is admin -->
-                            <div id='generate_password_old_password' {if ($IS_ADMIN)} style='display:none' {/if}>
+                            <!-- hide field if user is admin that is not editing themselves -->
+                            <div id='generate_password_old_password' {if ($IS_ADMIN && !$ADMIN_EDIT_SELF)} style='display:none' {/if}>
+
                                  <table width='100%' cellspacing='0' cellpadding='0' border='0' >
                                     <tr>
                                         <td width='35%' scope="row">
@@ -372,15 +373,15 @@
                         </tr>
                         <tr>
                             <td width="15%" scope="row"><slot><nobr>{$MOD.LBL_YOUR_PUBLISH_URL|strip_semicolon}:</nobr></slot></td>
-                            <td colspan=2><slot>{$CALENDAR_PUBLISH_URL}</slot></td>
+                            <td colspan=2><span class="calendar_publish_ok">{$CALENDAR_PUBLISH_URL}</span><span class="calendar_publish_none" style="display: none">{$MOD.LBL_NO_KEY}</span></td>
                         </tr>
                         <tr>
                             <td width="17%" scope="row"><slot>{$MOD.LBL_SEARCH_URL|strip_semicolon}:</slot></td>
-                            <td colspan=2><slot>{$CALENDAR_SEARCH_URL}</slot></td>
+                            <td colspan=2><span class="calendar_publish_ok">{$CALENDAR_SEARCH_URL}</span><span class="calendar_publish_none" style="display: none">{$MOD.LBL_NO_KEY}</span></td>
                         </tr>
                         <tr>
                             <td width="15%" scope="row"><slot>{$MOD.LBL_ICAL_PUB_URL|strip_semicolon}: {sugar_help text=$MOD.LBL_ICAL_PUB_URL_HELP}</slot></td>
-                            <td colspan=2><slot>{$CALENDAR_ICAL_URL}</slot></td>
+                            <td colspan=2><span class="calendar_publish_ok">{$CALENDAR_ICAL_URL}</span><span class="calendar_publish_none" style="display: none">{$MOD.LBL_NO_KEY}</span></td>
                         </tr>
                         <tr>
                             <td width="17%" scope="row"><slot>{$MOD.LBL_FDOW}:</slot>&nbsp;{sugar_help text=$MOD.LBL_FDOW_TEXT}</td>
@@ -414,15 +415,27 @@ function Admin_check(){
 		return true;
 }
 
+
 $(document).ready(function() {
-    $('#calendar_publish_key').keypress(function(){
-        $('#cal_pub_key_span').html( $(this).val());
-        $('#ical_pub_key_span').html( $(this).val());
+	var checkKey = function(key) {
+		if(key != '') {
+			$(".calendar_publish_ok").css('display', 'inline');
+			$(".calendar_publish_none").css('display', 'none');
+	        $('#cal_pub_key_span').html( key );
+	        $('#ical_pub_key_span').html( key );
+	        $('#search_pub_key_span').html( key );
+		} else {
+			$(".calendar_publish_ok").css('display', 'none');
+			$(".calendar_publish_none").css('display', 'inline');
+		}
+	};
+    $('#calendar_publish_key').keyup(function(){
+    	checkKey($(this).val());
     });
     $('#calendar_publish_key').change(function(){
-        $('#cal_pub_key_span').html( $(this).val());
-        $('#ical_pub_key_span').html( $(this).val());
+    	checkKey($(this).val());
     });
+    checkKey($('#calendar_publish_key').val());
 });
 {/literal}
 </script>

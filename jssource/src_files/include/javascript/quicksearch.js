@@ -1,6 +1,6 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -153,6 +153,7 @@ function enableQS(noReload){
                     	generateRequest : function(sQuery) {
                             //preprocess values
                             var item_id = this.inputElement.form_id + '_' + this.inputElement.name;
+                            this.sqs = updateSqsFromQSFieldsArray(item_id, this.sqs);
                             if (QSCallbacksArray[item_id]) {
                                 QSCallbacksArray[item_id](this.sqs);
                             }
@@ -160,8 +161,8 @@ function enableQS(noReload){
 	                    		to_pdf: 'true',
 	                            module: 'Home',
 	                            action: 'quicksearchQuery',
-	                            data: encodeURIComponent(YAHOO.lang.JSON.stringify(this.sqs)),
-	                            query: sQuery
+	                            data: YAHOO.lang.JSON.stringify(this.sqs),
+	                            query: decodeURIComponent(sQuery)
 	                    	});
 	                    	return out;
 	                    },
@@ -284,7 +285,7 @@ function enableQS(noReload){
                     
                     
                     if ( typeof(SUGAR.config.quicksearch_querydelay) != 'undefined' ) {
-                        search.queryDelay = SUGAR.config.quicksearch_querydelay;
+                        search.queryDelay = Number(SUGAR.config.quicksearch_querydelay);
                     }
                     
                     //fill in the data fields on selection
@@ -357,4 +358,16 @@ if(typeof QSFieldsArray == 'undefined') {
    QSFieldsArray = new Array();
    QSProcessedFieldsArray = new Array();
    QSCallbacksArray = new Array();
+}
+// Updates this.sqs of the Autocomplete instance with actual value from QSFieldsArray
+function updateSqsFromQSFieldsArray(sqsId, sqsToUpdate)
+{
+    if (typeof(QSFieldsArray[sqsId]) != 'undefined' && sqsToUpdate != QSFieldsArray[sqsId].sqs)
+    {
+        return QSFieldsArray[sqsId].sqs;
+    }
+    else
+    {
+        return sqsToUpdate;
+    }
 }

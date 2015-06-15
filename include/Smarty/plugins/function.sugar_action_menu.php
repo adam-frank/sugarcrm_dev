@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -162,7 +162,6 @@ function smarty_function_sugar_action_menu($params, &$smarty)
             'id' => !empty($params['id']) ? (is_array($params['id']) ? $params['id'][0] : $params['id']) : '',
             'htmlOptions' => array(
                 'class' => !empty($params['class']) && strpos($params['class'], 'clickMenu') !== false  ? $params['class'] : 'clickMenu '. (!empty($params['class']) ? $params['class'] : ''),
-                'name' => !empty($params['name']) ? $params['name'] : '',
             ),
             'itemOptions' => array(
                 'class' => (count($menus['items']) == 0) ? 'single' : 'sugar_action_button'
@@ -174,6 +173,11 @@ function smarty_function_sugar_action_menu($params, &$smarty)
                 $menus
             )
         );
+
+        if (!empty($params['name'])) {
+            $action_menu['htmlOptions']['name'] = $params['name'];
+        }
+
         require_once('function.sugar_menu.php');
         return smarty_function_sugar_menu($action_menu, $smarty);
 

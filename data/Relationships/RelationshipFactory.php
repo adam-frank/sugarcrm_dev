@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -161,14 +161,17 @@ class SugarRelationshipFactory {
         if ($buildingRelCache)
             return;
         $buildingRelCache = true;
-        include_once("modules/TableDictionary.php");
+        include("modules/TableDictionary.php");
 
         if (empty($beanList))
             include("include/modules.php");
         //Reload ALL the module vardefs....
         foreach($beanList as $moduleName => $beanName)
         {
-            VardefManager::loadVardef($moduleName, BeanFactory::getObjectName($moduleName));
+            VardefManager::loadVardef($moduleName, BeanFactory::getObjectName($moduleName), false, array(
+                //If relationships are not yet loaded, we can't figure out the rel_calc_fields.
+                "ignore_rel_calc_fields" => true,
+            ));
         }
 
         $relationships = array();
@@ -194,10 +197,16 @@ class SugarRelationshipFactory {
         }
         //Save it out
         sugar_mkdir(dirname($this->getCacheFile()), null, true);
-        $out="<?php \n \$relationships=" . var_export($relationships, true) .";";
-        sugar_file_put_contents($this->getCacheFile(), $out);
+        $out = "<?php \n \$relationships = " . var_export($relationships, true) . ";";
+        sugar_file_put_contents_atomic($this->getCacheFile(), $out);
 
         $this->relationships = $relationships;
+
+        //Now load all vardefs a second time populating the rel_calc_fields
+        foreach ($beanList as $moduleName => $beanName) {
+            VardefManager::loadVardef($moduleName, BeanFactory::getObjectName($moduleName));
+        }
+
         $buildingRelCache = false;
     }
 

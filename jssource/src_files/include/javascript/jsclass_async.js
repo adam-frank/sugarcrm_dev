@@ -1,6 +1,6 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -83,7 +83,7 @@ SugarVCalClient.prototype.load = function(user_id, request_id) {
     this.user_id = user_id;
 
     // Bug 44239: Removed reliance on jsolait
-    YAHOO.util.Connect.asyncRequest('GET', './vcal_server.php?type=vfb&source=outlook&user_id=' + user_id, {
+    YAHOO.util.Connect.asyncRequest('GET', './vcal_server.php?type=vfb&source=outlook&noAuth=noAuth&user_id=' + user_id, {
         success: function (result) {
             if (typeof GLOBAL_REGISTRY.freebusy == 'undefined') {
                 GLOBAL_REGISTRY.freebusy = new Object();

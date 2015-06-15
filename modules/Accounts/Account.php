@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -232,10 +232,11 @@ class Account extends Company {
 	}
 
 	function get_list_view_data(){
-		global $system_config,$current_user;
-		$temp_array = $this->get_list_view_array();
-		$temp_array["ENCODED_NAME"]=$this->name;
-//		$temp_array["ENCODED_NAME"]=htmlspecialchars($this->name, ENT_QUOTES);
+
+		$temp_array = parent::get_list_view_data();
+
+		$temp_array["ENCODED_NAME"] = $this->name;
+
 		if(!empty($this->billing_address_state))
 		{
 			$temp_array["CITY"] = $this->billing_address_city . ', '. $this->billing_address_state;
@@ -247,9 +248,6 @@ class Account extends Company {
 		$temp_array["BILLING_ADDRESS_STREET"]  = $this->billing_address_street;
 		$temp_array["SHIPPING_ADDRESS_STREET"] = $this->shipping_address_street;
     	
-    		$temp_array["EMAIL1"] = $this->emailAddress->getPrimaryAddress($this);
-		$this->email1 = $temp_array['EMAIL1'];
-		$temp_array["EMAIL1_LINK"] = $current_user->getEmailLink('email1', $this, '', '', 'ListView');
 		return $temp_array;
 	}
 	/**
@@ -279,16 +277,15 @@ class Account extends Company {
 
         function create_export_query(&$order_by, &$where, $relate_link_join='')
         {
-        	$custom_join = $this->custom_fields->getJOIN(true, true,$where);
-			if($custom_join)
-				$custom_join['join'] .= $relate_link_join;
+            $custom_join = $this->getCustomJoin(true, true, $where);
+            $custom_join['join'] .= $relate_link_join;
                          $query = "SELECT
-                                accounts.*,email_addresses.email_address email_address,
-                                accounts.name as account_name,
+                                accounts.*,
+                                email_addresses.email_address email_address,
+                                '' email_addresses_non_primary, " . // email_addresses_non_primary needed for get_field_order_mapping()
+                                "accounts.name as account_name,
                                 users.user_name as assigned_user_name ";
-						if($custom_join){
-   							$query .= $custom_join['select'];
- 						}
+            $query .= $custom_join['select'];
 						 $query .= " FROM accounts ";
                          $query .= "LEFT JOIN users
 	                                ON accounts.assigned_user_id=users.id ";
@@ -297,9 +294,7 @@ class Account extends Company {
 						$query .=  ' LEFT JOIN  email_addr_bean_rel on accounts.id = email_addr_bean_rel.bean_id and email_addr_bean_rel.bean_module=\'Accounts\' and email_addr_bean_rel.deleted=0 and email_addr_bean_rel.primary_address=1 ';
 						$query .=  ' LEFT JOIN email_addresses on email_addresses.id = email_addr_bean_rel.email_address_id ' ;
 
-						if($custom_join){
-  							$query .= $custom_join['join'];
-						}
+            $query .= $custom_join['join'];
 
 		        $where_auto = "( accounts.deleted IS NULL OR accounts.deleted=0 )";
 
@@ -308,8 +303,10 @@ class Account extends Company {
                 else
                         $query .= "where ".$where_auto;
 
-                if(!empty($order_by))
-                        $query .=  " ORDER BY ". $this->process_order_by($order_by, null);
+        $order_by = $this->process_order_by($order_by);
+        if (!empty($order_by)) {
+            $query .= ' ORDER BY ' . $order_by;
+        }
 
                 return $query;
         }

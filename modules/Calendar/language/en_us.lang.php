@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -123,7 +123,8 @@ $mod_strings = array (
 	'LBL_SETTINGS_TIME_STARTS'=>'Start time:', 
 	'LBL_SETTINGS_TIME_ENDS'=>'End time:', 
 	'LBL_SETTINGS_CALLS_SHOW' => 'Show Calls:',
-	'LBL_SETTINGS_TASKS_SHOW' => 'Show Tasks:', 
+	'LBL_SETTINGS_TASKS_SHOW' => 'Show Tasks:',
+    'LBL_SETTINGS_COMPLETED_SHOW' => 'Show Completed Meetings, Calls and Tasks:',
 
 	'LBL_SAVE_BUTTON' => 'Save',
 	'LBL_DELETE_BUTTON' => 'Delete',
@@ -149,8 +150,10 @@ $mod_strings = array (
 	
 	'LBL_EDIT_ALL_RECURRENCES' => 'Edit All Recurrences',
 	'LBL_REMOVE_ALL_RECURRENCES' => 'Delete All Recurrences',
-	
+
 	'LBL_DATE_END_ERROR' => 'End date is before start date',
+	'ERR_YEAR_BETWEEN' => 'Sorry, calendar cannot handle the year you requested<br>Year must be between 1970 and 2037',
+	'ERR_NEIGHBOR_DATE' => 'get_neighbor_date_str: not defined for this view',
 
 );
 

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -76,6 +76,8 @@ class PopupSmarty extends ListViewSmarty{
 		$this->module = $module;
 		$this->searchForm = new SearchForm($this->seed, $this->module);
 		$this->th->deleteTemplate($module, $this->view);
+        $this->headerTpl = 'include/Popups/tpls/header.tpl';
+        $this->footerTpl = 'include/Popups/tpls/footer.tpl';
 
 	}
 
@@ -230,11 +232,12 @@ class PopupSmarty extends ListViewSmarty{
 		$json = getJSONobj();
 		$this->th->ss->assign('jsLang', $jsLang);
 		$this->th->ss->assign('lang', substr($GLOBALS['current_language'], 0, 2));
-		$this->th->ss->assign('headerTpl', 'include/Popups/tpls/header.tpl');
-        $this->th->ss->assign('footerTpl', 'include/Popups/tpls/footer.tpl');
+        $this->th->ss->assign('headerTpl', $this->headerTpl);
+        $this->th->ss->assign('footerTpl', $this->footerTpl);
         $this->th->ss->assign('ASSOCIATED_JAVASCRIPT_DATA', 'var associated_javascript_data = '.$json->encode($associated_row_data). '; var is_show_fullname = '.$is_show_fullname.';');
 		$this->th->ss->assign('module', $this->seed->module_dir);
 		$request_data = empty($_REQUEST['request_data']) ? '' : $_REQUEST['request_data'];
+
 		$this->th->ss->assign('request_data', $request_data);
 		$this->th->ss->assign('fields', $this->fieldDefs);
 		$this->th->ss->assign('formData', $this->formData);
@@ -383,6 +386,11 @@ class PopupSmarty extends ListViewSmarty{
             }
         }
 
+        if (isset($_REQUEST['request_data'])) {
+            $request_data = json_decode(html_entity_decode($_REQUEST['request_data']), true);
+            $_POST['field_to_name'] = $_REQUEST['field_to_name'] = array_keys($request_data['field_to_name_array']);
+        }
+
         /**
          * Bug #46842 : The relate field field_to_name_array fails to copy over custom fields 
          * By default bean's create_new_list_query function loads fields displayed on the page or used in the search
@@ -401,7 +409,7 @@ class PopupSmarty extends ListViewSmarty{
             }
             
         }
-        
+
 
 		if (!empty($_REQUEST['query']) || (!empty($GLOBALS['sugar_config']['save_query']) && $GLOBALS['sugar_config']['save_query'] != 'populate_only')) {
 			$data = $this->lvd->getListViewData($this->seed, $searchWhere, 0, -1, $this->filter_fields, $params, 'id');
@@ -417,41 +425,7 @@ class PopupSmarty extends ListViewSmarty{
 			);
 		}
 
-		foreach($this->displayColumns as $columnName => $def)
-		{
-			$seedName =  strtolower($columnName);
-
-			if(empty($this->displayColumns[$columnName]['type'])){
-				if(!empty($this->lvd->seed->field_defs[$seedName]['type'])){
-					$seedDef = $this->lvd->seed->field_defs[$seedName];
-		            $this->displayColumns[$columnName]['type'] = (!empty($seedDef['custom_type']))?$seedDef['custom_type']:$seedDef['type'];
-		        }else{
-		        	$this->displayColumns[$columnName]['type'] = '';
-		        }
-			}//fi empty(...)
-
-			if(!empty($this->lvd->seed->field_defs[$seedName]['options'])){
-					$this->displayColumns[$columnName]['options'] = $this->lvd->seed->field_defs[$seedName]['options'];
-			}
-
-	        //C.L. Fix for 11177
-	        if($this->displayColumns[$columnName]['type'] == 'html') {
-	            $cField = $this->seed->custom_fields;
-	               if(isset($cField) && isset($cField->bean->$seedName)) {
-	                 	$seedName2 = strtoupper($columnName);
-	                 	$htmlDisplay = html_entity_decode($cField->bean->$seedName);
-	                 	$count = 0;
-	                 	while($count < count($data['data'])) {
-	                 		$data['data'][$count][$seedName2] = &$htmlDisplay;
-	                 	    $count++;
-	                 	}
-	            	}
-	        }//fi == 'html'
-
-			if (!empty($this->lvd->seed->field_defs[$seedName]['sort_on'])) {
-		    	$this->displayColumns[$columnName]['orderBy'] = $this->lvd->seed->field_defs[$seedName]['sort_on'];
-		    }
-		}
+        $this->fillDisplayColumnsWithVardefs();
 
 		$this->process($file, $data, $this->seed->object_name);
 	}

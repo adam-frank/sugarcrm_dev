@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -77,7 +77,7 @@ if(isset( $_POST['Users0emailAddress0'])){
         if ($username != '' && $useremail != ''){
             $usr_id=$usr->retrieve_user_id($username);
             $usr->retrieve($usr_id);
-            if ($usr->email1 !=  $useremail){
+            if (!$usr->isPrimaryEmail($useremail)) {
                 echo $mod_strings['LBL_PROVIDE_USERNAME_AND_EMAIL'];
                 return;
             }

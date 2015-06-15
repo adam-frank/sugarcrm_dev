@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -288,6 +288,14 @@ class TemplateHandler {
      */
     function deleteTemplate($module, $view) {
         if(is_file($this->cacheDir . $this->templateDir . $module . '/' .$view . '.tpl')) {
+            // Bug #54634 : RTC 18144 : Cannot add more than 1 user to role but popup is multi-selectable
+            if ( !isset($this->ss) )
+            {
+                $this->loadSmarty();
+            }
+            $cache_file_name = $this->ss->_get_compile_path($this->cacheDir . $this->templateDir . $module . '/' .$view . '.tpl');
+            SugarCache::cleanFile($cache_file_name);
+
             return unlink($this->cacheDir . $this->templateDir . $module . '/' .$view . '.tpl');
         }
         return false;
@@ -399,7 +407,7 @@ class TemplateHandler {
                     }
                     else {
                         if (!empty($field['id_name']))
-                            $field['id_name'] = $field['name'] . "_" . $field['id_name'];
+                            $field['id_name'] = $module.$field['id_name'];
                     }
                 }
 				$name = $qsd->form_name . '_' . $field['name'];

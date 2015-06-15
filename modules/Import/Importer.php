@@ -3,7 +3,7 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -230,6 +230,19 @@ class Importer
                 }
             }
 
+            // Handle email field, if it's a semi-colon separated export
+            if ($field == 'email_addresses_non_primary' && !empty($rowValue))
+            {
+                if (strpos($rowValue, ';') !== false)
+                {
+                    $rowValue = explode(';', $rowValue);
+                }
+                else
+                {
+                    $rowValue = array($rowValue);
+                }
+            }
+
             // Handle email1 and email2 fields ( these don't have the type of email )
             if ( $field == 'email1' || $field == 'email2' )
             {
@@ -272,9 +285,27 @@ class Importer
             // If the field is empty then there is no need to check the data
             if( !empty($rowValue) )
             {
-                //Start
-                $rowValue = $this->sanitizeFieldValueByType($rowValue, $fieldDef, $defaultRowValue, $focus, $fieldTranslated);
-                if ($rowValue === FALSE) {
+                // If it's an array of non-primary e-mails, check each mail
+                if ($field == "email_addresses_non_primary" && is_array($rowValue))
+                {
+                    foreach ($rowValue as $tempRow)
+                    {
+                        $tempRow = $this->sanitizeFieldValueByType($tempRow, $fieldDef, $defaultRowValue, $focus, $fieldTranslated);
+                        if ($tempRow === FALSE)
+                        {
+                            $rowValue = false;
+                            $do_save = false;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    $rowValue = $this->sanitizeFieldValueByType($rowValue, $fieldDef, $defaultRowValue, $focus, $fieldTranslated);
+                }
+
+                if ($rowValue === false)
+                {
 					/* BUG 51213 - jeff @ neposystems.com */
                     $do_save = false;
                     continue;
@@ -546,7 +577,7 @@ class Importer
 
         // Bug51192: check if there are any changes in the imported data
         $hasDataChanges = false;
-        $dataChanges=$focus->db->getDataChanges($focus);
+        $dataChanges=$focus->db->getAuditDataChanges($focus);
         
         if(!empty($dataChanges)) {
             foreach($dataChanges as $field=>$fieldData) {
@@ -610,7 +641,7 @@ class Importer
         //merge with mappingVals array
         if(!empty($advMapping) && is_array($advMapping))
         {
-            $mappingValsArr = array_merge($mappingValsArr,$advMapping);
+            $mappingValsArr = $advMapping + $mappingValsArr;
         }
 
         //set mapping

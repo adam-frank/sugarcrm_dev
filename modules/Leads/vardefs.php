@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -345,20 +345,6 @@ $dictionary['Lead'] = array('table' => 'leads','audited'=>true, 'unified_search'
 			'options' => 'dom_meeting_accept_status',
 			'importable' => 'false',
 		),
-		//bug 42902
-		'email'=> array(
-			'name' => 'email',
-			'type' => 'email',
-			'query_type' => 'default',
-			'source' => 'non-db',
-			'operator' => 'subquery',
-			'subquery' => 'SELECT eabr.bean_id FROM email_addr_bean_rel eabr JOIN email_addresses ea ON (ea.id = eabr.email_address_id) WHERE eabr.deleted=0 AND ea.email_address LIKE',
-			'db_field' => array(
-				'id',
-			),
-			'vname' =>'LBL_ANY_EMAIL',
-			'studio' => array('visible'=>false, 'searchview'=>true),
-		),
   'webtolead_email1' =>
   array (
     'name' => 'webtolead_email1',
@@ -591,7 +577,9 @@ $dictionary['Lead'] = array('table' => 'leads','audited'=>true, 'unified_search'
 						  			'rhs_module'		=>	'CampaignLog',
 									'rhs_table'			=>	'campaign_log',
 									'rhs_key' 			=> 	'target_id',
-						  			'relationship_type'	=>'one-to-many'
+						  			'relationship_type'	=>'one-to-many',
+						  			'relationship_role_column' => 'target_type',
+						  			'relationship_role_column_value' => 'Leads'
 						  		)
 
 	)
@@ -602,5 +590,3 @@ $dictionary['Lead'] = array('table' => 'leads','audited'=>true, 'unified_search'
 VardefManager::createVardef('Leads','Lead', array('default', 'assignable',
 'person'));
 
-
-?>

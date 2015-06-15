@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -229,6 +229,10 @@ $subpanel = new SubPanelTiles($focus, 'Campaigns');
     if(empty($latest_marketing_id) || $latest_marketing_id === 'all'){
         //do nothing, no filtering is needed
     }else{
+
+        // assign selected marketing ID back to request in order to let ListView use it as a part of subpanel base URL
+        $_GET['mkt_id'] = $latest_marketing_id;
+
         //get array of layout defs
         $layoutDefsArr= $subpanel->subpanel_definitions->layout_defs;
 

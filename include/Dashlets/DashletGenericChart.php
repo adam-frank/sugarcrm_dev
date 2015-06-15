@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -137,10 +137,18 @@ abstract class DashletGenericChart extends Dashlet
     	$additionalTitle = '';
         if($this->isRefreshable)
 
-            $additionalTitle .= '<a href="#" onclick="SUGAR.mySugar.retrieveDashlet(\'' 
-                                . $this->id . '\',\'predefined_chart\'); return false;"><!--not_in_theme!--><img border="0" align="absmiddle" title="' . translate('LBL_DASHLET_REFRESH', 'Home') . '" alt="' . translate('LBL_DASHLET_REFRESH', 'Home') . '" src="' 
-                                . SugarThemeRegistry::current()->getImageURL('dashlet-header-refresh.png').'"/></a>';    	
-
+            $additionalTitle .= '<a href="#" onclick="SUGAR.mySugar.retrieveDashlet(\''
+                . $this->id
+                . '\',\'predefined_chart\'); return false;"><!--not_in_theme!-->'
+                . SugarThemeRegistry::current()->getImage(
+                    'dashlet-header-refresh',
+                    'border="0" align="absmiddle" title="'. translate('LBL_DASHLET_REFRESH', 'Home') . '"',
+                    null,
+                    null,
+                    '.gif',
+                    translate('LBL_DASHLET_REFRESH', 'Home')
+                )
+                . '</a>';
         return $additionalTitle;
     }
 
@@ -340,13 +348,7 @@ abstract class DashletGenericChart extends Dashlet
         $autoRefreshSS->assign('dashletOffset', $dashletOffset);
         $autoRefreshSS->assign('dashletId', $this->id);
         $autoRefreshSS->assign('strippedDashletId', str_replace("-","",$this->id)); //javascript doesn't like "-" in function names
-        if ( empty($this->autoRefresh) ) {
-            $this->autoRefresh = 0;
-        }
-        elseif ( !empty($sugar_config['dashlet_auto_refresh_min']) && $sugar_config['dashlet_auto_refresh_min'] > $this->autoRefresh ) {
-            $this->autoRefresh = $sugar_config['dashlet_auto_refresh_min'];
-        }
-        $autoRefreshSS->assign('dashletRefreshInterval', $this->autoRefresh * 1000);
+        $autoRefreshSS->assign('dashletRefreshInterval', $this->getAutoRefresh());
         $autoRefreshSS->assign('url', "predefined_chart");
         $tpl = 'include/Dashlets/DashletGenericAutoRefresh.tpl';
         if ( $_REQUEST['action'] == "DynamicAction" ) {

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -91,37 +91,43 @@ class Scheduler extends SugarBean {
     protected function getUser()
     {
         if(empty($this->user)) {
-            $this->initUser();
+            $this->user = Scheduler::initUser();
         }
         return $this->user;
     }
 
-    protected function initUser()
+    /**
+     * Function returns an Admin user for running Schedulers or false if no admin users are present in the system
+     * (which means the Scheduler Jobs which need admin rights will fail to execute)
+     */
+    public static function initUser()
     {
         $user = new User();
-        //check is default admin exists
-        $adminId = $this->db->getOne(
-            'SELECT id FROM users WHERE id='.$this->db->quoted('1').' AND is_admin=1 AND deleted=0 AND status='.$this->db->quoted('Active'),
+        $db = DBManagerFactory::getInstance();
+        
+        //Check is default admin exists
+        $adminId = $db->getOne(
+            'SELECT id FROM users WHERE id = ' . $db->quoted('1') . ' AND is_admin = 1 AND deleted = 0 AND status = ' . $db->quoted('Active'),
             true,
             'Error retrieving Admin account info'
         );
-        if (false === $adminId) {//retrive another admin
-            $adminId = $this->db->getOne(
-                'SELECT id FROM users WHERE is_admin=1 AND deleted=0 AND status='.$this->db->quoted('Active'),
+        
+        if ($adminId === false) {// Retrieve another admin if default admin doesn't exist
+            $adminId = $db->getOne(
+                'SELECT id FROM users WHERE is_admin = 1 AND deleted = 0 AND status = ' . $db->quoted('Active'),
                 true,
                 'Error retrieving Admin account info'
             );
-            if ($adminId) {
+            if ($adminId) {// Get admin user
                 $user->retrieve($adminId);
-            } else {
+            } else {// Return false and log error
                 $GLOBALS['log']->fatal('No Admin account found!');
                 return false;
             }
-
-        } else {
-            $user->retrieve('1'); // Scheduler jobs run as default Admin
+        } else {// Scheduler jobs run as default Admin
+            $user->retrieve('1'); 
         }
-        $this->user = $user;
+        return $user;
     }
 
 
@@ -214,6 +220,7 @@ class Scheduler extends SugarBean {
 		$today	= getdate($timedate->getNow()->ts);
 
 		// derive day part
+        $dayName = array();
 		if($days == '*') {
 			$GLOBALS['log']->debug('----->got * day');
 
@@ -261,6 +268,7 @@ class Scheduler extends SugarBean {
 			$startMon = $timedate->fromDb(date_time_start)->month;
 			$startFrom = ($startMon % $mult);
 
+            $compMons = array();
 			for($i=$startFrom;$i<=12;$i+$mult) {
 				$compMons[] = $i+$mult;
 				$i += $mult;
@@ -270,6 +278,7 @@ class Scheduler extends SugarBean {
 				return false;
 			}
 		} elseif($mons != '*') {
+            $monName = array();
 			if(strstr($mons,',')) { // we have particular (groups) of months
 				$exMons = explode(',',$mons);
 				foreach($exMons as $k1 => $monGroup) {
@@ -298,6 +307,7 @@ class Scheduler extends SugarBean {
 		}
 
 		// derive dates part
+        $dateName = array();
 		if($dates == '*') {
 			$GLOBALS['log']->debug('----->got * dates');
 		} elseif(strstr($dates, '*/')) {
@@ -344,6 +354,7 @@ class Scheduler extends SugarBean {
 		// derive hours part
 		//$currentHour = gmdate('G');
 		//$currentHour = date('G', strtotime('00:00'));
+        $hrName = array();
 		if($hrs == '*') {
 			$GLOBALS['log']->debug('----->got * hours');
 			for($i=0;$i<24; $i++) {
@@ -380,6 +391,7 @@ class Scheduler extends SugarBean {
 		//_pp($hrName);
 		// derive minutes
 		//$currentMin = date('i');
+        $minName = array();
 		$currentMin = $timedate->getNow()->minute;
 		if(substr($currentMin, 0, 1) == '0') {
 			$currentMin = substr($currentMin, 1, 1);
@@ -896,6 +908,30 @@ class Scheduler extends SugarBean {
         $sched13->modified_user_id   = '1';
         $sched13->catch_up           = '0';
         $sched13->save();
+
+        $sched14 = new Scheduler();
+        $sched14->name              = $mod_strings['LBL_OOTB_REMOVE_DOCUMENTS_FROM_FS'];
+        $sched14->job               = 'function::removeDocumentsFromFS';
+        $sched14->date_time_start   = create_date(2012, 1, 1) . ' ' . create_time(0, 0, 1);
+        $sched14->date_time_end     = create_date(2030, 12, 31) . ' ' . create_time(23, 59, 59);
+        $sched14->job_interval      = '0::3::1::*::*';
+        $sched14->status            = 'Active';
+        $sched14->created_by        = '1';
+        $sched14->modified_user_id  = '1';
+        $sched14->catch_up          = '0';
+        $sched14->save();
+
+        $sched15 = new Scheduler();
+        $sched15->name               = $mod_strings['LBL_OOTB_SUGARFEEDS'];
+        $sched15->job                = 'function::trimSugarFeeds';
+        $sched15->date_time_start    = create_date(2005,1,1) . ' ' . create_time(0,0,1);
+        $sched15->date_time_end      = create_date(2020,12,31) . ' ' . create_time(23,59,59);
+        $sched15->job_interval       = '0::2::1::*::*';
+        $sched15->status             = 'Active';
+        $sched15->created_by         = '1';
+        $sched15->modified_user_id   = '1';
+        $sched15->catch_up           = '1';
+        $sched15->save();
 	}
 
 	////	END SCHEDULER HELPER FUNCTIONS

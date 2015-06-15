@@ -1,6 +1,6 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -317,8 +317,6 @@ function set_chooser()
     document.EditView.display_tabs_def.value = display_tabs_def;
     document.EditView.hide_tabs_def.value = hide_tabs_def;
     document.EditView.remove_tabs_def.value = remove_tabs_def;
-    //sets a cookie to reload menu on ajax load so new menu shows up
-    	Set_Cookie('sugar_theme_menu_load','true',30,'/','','');
 
 }
 

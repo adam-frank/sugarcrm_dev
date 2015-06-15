@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -75,6 +75,17 @@ class SugarTestCampaignUtilities
             $campaign_ids[] = $campaign->id;
         }
         return $campaign_ids;
+    }
+
+    public static function setCreatedCampaign($ids)
+    {
+        $ids = is_array($ids) ? $ids : array($ids);
+        foreach ( $ids as $id )
+        {
+            $campaign = new Campaign();
+            $campaign->id = $id;
+            self::$_createdCampaigns[] = $campaign;
+        }
     }
 }
 ?>

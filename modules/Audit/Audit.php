@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -127,7 +127,12 @@ class Audit extends SugarBean {
                                 }
                                 
                                 if ($field['name'] == 'date_created') {
-                                	$temp_list[$field['name']]=$timedate->to_display_date_time($temp_list[$field['name']]);
+                                   $date_created = '';
+                                   if (!empty($temp_list[$field['name']])) {
+                                        $date_created = $timedate->to_display_date_time($temp_list[$field['name']]);
+                                        $date_created = !empty($date_created)?$date_created:$temp_list[$field['name']];
+                                   }
+                                   $temp_list[$field['name']]=$date_created;
                                 }
 								 if(($field['name'] == 'before_value_string' || $field['name'] == 'after_value_string') && ($row['data_type'] == "enum" || $row['data_type'] == "multienum"))
 								 {

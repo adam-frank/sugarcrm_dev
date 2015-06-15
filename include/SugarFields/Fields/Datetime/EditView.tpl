@@ -1,7 +1,7 @@
 {*
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -54,6 +54,7 @@
 <script type="text/javascript">
 Calendar.setup ({ldelim}
 inputField : "{{$idname}}",
+form : "{{$displayParams.formName}}",
 ifFormat : "{$CALENDAR_FORMAT}",
 daFormat : "{$CALENDAR_FORMAT}",
 button : "{{$idname}}_trigger",

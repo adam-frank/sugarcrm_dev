@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -38,7 +38,7 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 $searchFields['Tasks'] = 
 	array (
 		'name' => array( 'query_type'=>'default'),
-        'contact_name' => array( 'query_type'=>'default','db_field'=>array('contacts.first_name','contacts.last_name')),        
+        'contact_name' => array('query_type' => 'default', 'db_field' => array('contacts.first_name', 'contacts.last_name'), 'force_unifiedsearch' => true),        
         'current_user_only'=> array('query_type'=>'default','db_field'=>array('assigned_user_id'),'my_items'=>true, 'vname' => 'LBL_CURRENT_USER_FILTER', 'type' => 'bool'),
         'assigned_user_id'=> array('query_type'=>'default'),
         'status'=> array('query_type'=>'default', 'options' => 'task_status_dom', 'template_var' => 'STATUS_FILTER'),

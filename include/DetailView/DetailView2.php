@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -74,7 +74,7 @@ class DetailView2 extends EditView
            $this->showVCRControl = !$GLOBALS['sugar_config']['disable_vcr'];
         }
         if(!empty($this->metadataFile) && file_exists($this->metadataFile)){
-        	require_once($this->metadataFile);
+            require($this->metadataFile);
         }else {
         	//If file doesn't exist we create a best guess
         	if(!file_exists("modules/$this->module/metadata/detailviewdefs.php") &&
@@ -98,7 +98,7 @@ class DetailView2 extends EditView
         	   echo $error;
         	   die();
         	}
-            require_once("modules/$this->module/metadata/detailviewdefs.php");
+            require("modules/$this->module/metadata/detailviewdefs.php");
         }
 
         $this->defs = $viewdefs[$this->module][$this->view];

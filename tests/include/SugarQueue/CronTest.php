@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -41,28 +41,48 @@ require_once 'modules/SchedulersJobs/SchedulersJob.php';
 class CronTest extends Sugar_PHPUnit_Framework_TestCase
 {
     static public $jobCalled = false;
+    public $cron_config;
 
     public static function setUpBeforeClass()
     {
-        $GLOBALS['current_user'] = SugarTestUserUtilities::createAnonymousUser();
+        SugarTestHelper::setUp('current_user');
+        SugarTestHelper::setUp('beanFiles');
+        SugarTestHelper::setUp('beanList');
         // clean up queue
 		$GLOBALS['db']->query("DELETE FROM job_queue WHERE status='queued'");
     }
 
     public static function tearDownAdterClass()
     {
-        SugarTestUserUtilities::removeAllCreatedAnonymousUsers();
+        SugarTestHelper::tearDown();
     }
 
     public function setUp()
     {
         $this->jq = $jobq = new SugarCronJobs();
         self::$jobCalled = false;
+        if(isset($GLOBALS['sugar_config']['cron'])) {
+            $this->config_cron = $GLOBALS['sugar_config']['cron'];
+        }
     }
 
     public function tearDown()
     {
         $GLOBALS['db']->query("DELETE FROM job_queue WHERE scheduler_id='unittest'");
+        if(isset($GLOBALS['sugar_config']['cron'])) {
+            $GLOBALS['sugar_config']['cron'] = $this->config_cron;
+        } else {
+            unset($GLOBALS['sugar_config']['cron']);
+        }
+    }
+
+    public function testConfig()
+    {
+        $GLOBALS['sugar_config']['cron'] = array('max_cron_jobs' => 12, 'max_cron_runtime' => 34, 'min_cron_interval' => 56);
+        $jobq = new SugarCronJobs();
+        $this->assertEquals(12, $jobq->max_jobs, "Wrong setting for max_jobs");
+        $this->assertEquals(34, $jobq->max_runtime, "Wrong setting for max_runtime");
+        $this->assertEquals(56, $jobq->min_interval, "Wrong setting for min_interval");
     }
 
     public function testThrottle()
@@ -103,13 +123,13 @@ class CronTest extends Sugar_PHPUnit_Framework_TestCase
         $this->jq->min_interval = 0; // disable throttle
         $this->jq->disable_schedulers = true;
         $this->jq->runCycle();
-
         $this->assertTrue(self::$jobCalled, "Job was not called");
         $this->assertTrue($this->jq->runOk(), "Wrong OK flag");
         $job = new SchedulersJob();
         $job->retrieve($jobid);
         $this->assertEquals(SchedulersJob::JOB_SUCCESS, $job->resolution, "Wrong resolution");
         $this->assertEquals(SchedulersJob::JOB_STATUS_DONE, $job->status, "Wrong status");
+        $this->assertEmpty(session_id(), "Session not destroyed");
     }
 
     public function testQueueFailJob()
@@ -133,6 +153,7 @@ class CronTest extends Sugar_PHPUnit_Framework_TestCase
         $job->retrieve($jobid);
         $this->assertEquals(SchedulersJob::JOB_FAILURE, $job->resolution, "Wrong resolution");
         $this->assertEquals(SchedulersJob::JOB_STATUS_DONE, $job->status, "Wrong status");
+        $this->assertEmpty(session_id(), "Session not destroyed");
     }
 
     public function testJobsCount()
@@ -222,6 +243,7 @@ class CronTest extends Sugar_PHPUnit_Framework_TestCase
     {
         // job 1 - oldest, should be executed
         $job = new SchedulersJob();
+        $job->update_date_modified = false;
         $job->status = SchedulersJob::JOB_STATUS_RUNNING;
         $job->scheduler_id = 'unittest';
         $job->execute_time = TimeDate::getInstance()->nowDb();
@@ -243,6 +265,7 @@ class CronTest extends Sugar_PHPUnit_Framework_TestCase
         $job->retrieve($jobid1);
         $this->assertEquals(SchedulersJob::JOB_STATUS_DONE, $job->status, "Wrong status");
         $this->assertEquals(SchedulersJob::JOB_FAILURE, $job->resolution, "Wrong resolution");
+        $this->assertEmpty(session_id(), "Session not destroyed");
     }
 
 }

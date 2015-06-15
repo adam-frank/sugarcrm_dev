@@ -1,7 +1,7 @@
 {*
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -42,7 +42,7 @@
 {/if}
 {capture name=idname assign=idname}{{sugarvar key='name'}}{/capture}
 {{if !empty($displayParams.idName)}}
-    {assign var=idname value=$displayParams.idName}
+    {assign var=idname value='{{$displayParams.idName}}'}
 {{/if}}
 
 {if isset({{sugarvar key='value' string=true}}) && {{sugarvar key='value' string=true}} != ''}

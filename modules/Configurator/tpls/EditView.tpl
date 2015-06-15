@@ -2,7 +2,7 @@
 
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -146,7 +146,7 @@
     </tr>
     <tr>
         <td  scope="row" width='12%' nowrap>
-            {$MOD.NEW_LOGO}&nbsp;{sugar_help text=$MOD.NEW_LOGO_HELP}
+            {$MOD.NEW_LOGO}&nbsp;{sugar_help text=$MOD.NEW_LOGO_HELP_NO_SPACE}
         </td>
         <td  width='35%'>
             <div id="container_upload"></div>
@@ -335,8 +335,8 @@
 
 </table>
 
-
 <table  width="100%" border="0" cellspacing="1" cellpadding="0" class="edit view">
+{if $logger_visible}
 <tr>
 <th align="left" scope="row" colspan="6"><h4>{$MOD.LBL_LOGGER}</h4></th>
 </tr>
@@ -360,11 +360,11 @@
 		<td scope="row">{$MOD.LBL_LOGGER_MAX_LOGS} </td>
 		<td > <input name="logger_file_maxLogs" value="{$config.logger.file.maxLogs}"></td>
 	</tr>
+{/if}
 	<tr>
 	    <td><a href="index.php?module=Configurator&action=LogView" target="_blank">{$MOD.LBL_LOGVIEW}</a></td>
 	</tr>
 </table>
-
 
 
 <div style="padding-top: 2px;">
@@ -381,6 +381,11 @@
         {sugar_getimage name="sqsWait" ext=".gif" alt=$mod_strings.LBL_LOADING other_attributes='id="loading_img_company" style="display:none" '}
     </form>
 </div>
+{if $error.company_logo}
+<script type='text/javascript'>
+{literal}$(function(){alert('{/literal}{$error.company_logo}{literal}');});{/literal}
+</script>
+{/if}
 {literal}
 <script type='text/javascript'>
 function init_logo(){

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -44,8 +44,10 @@ function additionalDetailsCall($fields) {
 	}
 
 	$overlib_string = '';
-
-	//Modify by jchi 6/27/2008 1515pm china time , bug 20626.
+   if(!empty($fields['NAME'])) {
+        	$overlib_string .= '<b>'. $mod_strings['LBL_SUBJECT'] . '</b> ' . $fields['NAME'];
+        	$overlib_string .= '<br>';
+    }
 	if(!empty($fields['DATE_START']))
 		$overlib_string .= '<b>'. $mod_strings['LBL_DATE_TIME'] . '</b> ' . $fields['DATE_START'] . ' <br>';
 	if(isset($fields['DURATION_HOURS']) || isset($fields['DURATION_MINUTES'])) {
@@ -58,6 +60,17 @@ function additionalDetailsCall($fields) {
         }
         $overlib_string .=  '<br>';
 	}
+    if (!empty($fields['PARENT_ID']))
+    {
+            $overlib_string .= "<b>". $mod_strings['LBL_RELATED_TO'] . "</b> ".
+                    "<a href='index.php?module=".$fields['PARENT_TYPE']."&action=DetailView&record=".$fields['PARENT_ID']."'>".
+                    $fields['PARENT_NAME'] . "</a>";
+            $overlib_string .= '<br>';
+    }
+    if(!empty($fields['STATUS'])) {
+      	$overlib_string .= '<b>'. $mod_strings['LBL_STATUS'] . '</b> ' . $fields['STATUS'];
+      	$overlib_string .= '<br>';
+      }
 	if(!empty($fields['DESCRIPTION'])) {
 		$overlib_string .= '<b>'. $mod_strings['LBL_DESCRIPTION'] . '</b> ' . substr($fields['DESCRIPTION'], 0, 300);
 		if(strlen($fields['DESCRIPTION']) > 300) $overlib_string .= '...';

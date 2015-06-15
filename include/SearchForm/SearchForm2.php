@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -405,7 +405,10 @@ require_once('include/EditView/EditView2.php');
                     //53131 - add blank option for SearchField options with def 'options_add_blank' set to true
                     if ($this->fieldDefs[$fvName]['type'] == "parent_type" || $this->fieldDefs[$fvName]['type'] == "parent" || (isset($this->searchFields[$name]['options_add_blank']) && $this->searchFields[$name]['options_add_blank']) )
                     {
-                        $this->fieldDefs[$fvName]['options'] = array_merge(array(""=>""), $this->fieldDefs[$fvName]['options']);
+                        if (!array_key_exists('', $this->fieldDefs[$fvName]['options'])) {
+                            $this->fieldDefs[$fvName]['options'] =
+                                array('' => '') + $this->fieldDefs[$fvName]['options'];
+                        }
                     }
 	            }
 
@@ -668,6 +671,9 @@ require_once('include/EditView/EditView2.php');
 
                          $field = $real_field;
                          unset($this->searchFields[$end_field]['value']);
+                     }else{
+                         //if both start and end ranges have not been defined, skip this filter.
+                        continue;
                      }
                  } else if (preg_match('/^range_(.*?)$/', $field, $match) && isset($this->searchFields[$field]['value'])) {
                      $real_field = $match[1];
@@ -1001,42 +1007,56 @@ require_once('include/EditView/EditView2.php');
                                  }else{
                                      //Bug#37087: Re-write our sub-query to it is executed first and contents stored in a derived table to avoid mysql executing the query
                                      //outside in. Additional details: http://bugs.mysql.com/bug.php?id=9021
-                                    $where .= "{$db_field} $in (select * from ({$parms['subquery']} ".$this->seed->db->quoted($field_value.'%').") {$field}_derived)";
+                                     $selectCol = ' * ';
+                                     //use the select column in the subquery if it exists
+                                     if(!empty($parms['subquery'])){
+                                         $selectCol = $this->getSelectCol($parms['subquery']);
+                                     }
+                                    $where .= "{$db_field} $in (select $selectCol from ({$parms['subquery']} ".$this->seed->db->quoted($field_value.'%').") {$field}_derived)";
                                  }
 
                                  break;
 
                              case 'like':
-                                 if($type == 'bool' && $field_value == 0) {
+                                 if($type == 'bool' && $field_value == 0)
+                                 {
                                      // Bug 43452 - FG - Added parenthesis surrounding the OR (without them the WHERE clause would be broken)
                                      $where .=  "( " . $db_field . " = '0' OR " . $db_field . " IS NULL )";
                                  }
-                                 else {
-                                     //check to see if this is coming from unified search or not
+                                 else
+                                 {
+                                     // check to see if this is coming from unified search or not
                                      $UnifiedSearch = !empty($parms['force_unifiedsearch']);
                                      if(isset($_REQUEST['action']) && $_REQUEST['action'] == 'UnifiedSearch'){
                                          $UnifiedSearch = true;
                                      }
-
-                                     //check to see if this is a universal search OR the field has db_concat_fields set in vardefs, AND the field name is "last_name"
-                                     //BUG 45709: Tasks Advanced Search: Contact Name field does not return matches on full names
-                                     //Frank: Adding Surabhi's fix back which seem to have gone missing in CottonCandy merge
-                                     if(($UnifiedSearch || !empty($this->seed->field_name_map[$field]['db_concat_fields'])) && strpos($db_field, 'last_name') !== false){
-                                         //split the string value, and the db field name
-                                         $string = explode(' ', $field_value);
-                                         $column_name =  explode('.', $db_field);
-                                         //when a search is done with a space, we concatenate and search against the full name.
-                                         if(count($string)>1){
-                                             //add where clause against concatenated fields
-                                             $where .= $this->seed->db->concat($column_name[0],array('first_name','last_name')) . " LIKE ".$this->seed->db->quoted($field_value.'%');
-                                             $where .= ' OR ' . $this->seed->db->concat($column_name[0],array('last_name','first_name')) . " LIKE ".$this->seed->db->quoted($field_value.'%');
-                                         }else{
-                                             //no space was found, add normal where clause
-                                             $where .=  $db_field . " like ".$this->seed->db->quoted(sql_like_string($field_value, $like_char));
+                                     
+                                     // If it is a unified search and if the search contains more then 1 word (contains space)
+                                     // and if it's the last element from db_field (so we do the concat only once, not for every db_field element)
+                                     // we concat the db_field array() (both original, and in reverse order) and search for the whole string in it  
+                                     if ( $UnifiedSearch && strpos($field_value, ' ') !== false && strpos($db_field, $parms['db_field'][count($parms['db_field']) - 1]) !== false )
+                                     {
+                                         // Get the table name used for concat
+                                         $concat_table = explode('.', $db_field);
+                                         $concat_table = $concat_table[0];
+                                         // Get the fields for concatenating
+                                         $concat_fields = $parms['db_field'];
+                                         
+                                         // If db_fields (e.g. contacts.first_name) contain table name, need to remove it
+                                         for ($i = 0; $i < count($concat_fields); $i++)
+                                         {
+                                         	if (strpos($concat_fields[$i], $concat_table) !== false)
+                                         	{
+                                         		$concat_fields[$i] = substr($concat_fields[$i], strlen($concat_table) + 1);
+                                         	}
                                          }
-
-                                     }else {
-
+                                         
+                                         // Concat the fields and search for the value
+                                         $where .= $this->seed->db->concat($concat_table, $concat_fields) . " LIKE " . $this->seed->db->quoted($field_value . $like_char);
+                                         $where .= ' OR ' . $this->seed->db->concat($concat_table, array_reverse($concat_fields)) . " LIKE " . $this->seed->db->quoted($field_value . $like_char);
+                                     }
+                                     else
+                                     {
                                          //Check if this is a first_name, last_name search
                                          if(isset($this->seed->field_name_map) && isset($this->seed->field_name_map[$db_field]))
                                          {
@@ -1224,4 +1244,38 @@ require_once('include/EditView/EditView2.php');
 
          return array('searchdefs' => $searchdefs, 'searchFields' => $searchFields );
      }
+
+    /**
+      * this function will take the subquery string and return the columns to be used in the select of the derived table
+      *
+      * @param string $subquery the subquery string to parse through
+      * @return string the retrieved column list
+      */
+    protected function getSelectCol($subquery)
+    {
+        $selectCol = '';
+
+        if (empty($subquery)) {
+            return $selectCol;
+        }
+        $subquery = strtolower($subquery);
+        //grab the values between the select and from
+        $select = stripos($subquery, 'select');
+        $from = stripos($subquery, 'from');
+        if ($select !==false && $from!==false && $select+6 < $from) {
+            $selectCol = substr($subquery, $select+6, $from-$select-6);
+        }
+        //remove table names if they exist
+        $columns = explode(',', $selectCol);
+        $i = 0;
+        foreach ($columns as $column) {
+            $dot = strpos($column, '.');
+            if ($dot > 0) {
+                $columns[$i] = substr($column, $dot+1);
+            }
+            $i++;
+        }
+        $selectCol = implode(',', $columns);
+        return $selectCol;
+    }
  }

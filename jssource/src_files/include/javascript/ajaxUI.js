@@ -1,6 +1,6 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -44,7 +44,6 @@ SUGAR.ajaxUI = {
         if (typeof window.onbeforeunload == "function")
             window.onbeforeunload = null;
         scroll(0,0);
-        SUGAR.ajaxUI.hideLoadingPanel();
         try{
             var r = YAHOO.lang.JSON.parse(o.responseText);
             cont = r.content;
@@ -63,8 +62,14 @@ SUGAR.ajaxUI = {
             }
 
             var c = document.getElementById("content");
+            // Bug #49205 : Subpanels fail to load when selecting subpanel tab
+            // hide content of placeholder before apply new one
+            // @see SUGAR.util.evalScript
+            c.style.visibility = 'hidden';
             c.innerHTML = cont;
             SUGAR.util.evalScript(cont);
+            // all javascripts have been processed - show content of placeholder
+            c.style.visibility = 'visible';
 
             if ( r.moduleList)
             {
@@ -82,9 +87,16 @@ SUGAR.ajaxUI = {
                 	$("#logo").attr("title", logoStats.replace(/[\d]+\.[\d]+/, r.responseTime)).tipTip({maxWidth: "auto", edgeOffset: 10});
                 }
             }
+            // Bug #49205 : Subpanels fail to load when selecting subpanel tab
+            // hide ajax loading message after all scripts are processed
+            SUGAR.ajaxUI.hideLoadingPanel();
         } catch (e){
+            // Bug #49205 : Subpanels fail to load when selecting subpanel tab
+            // hide ajax loading message after all scripts are processed
+            SUGAR.ajaxUI.hideLoadingPanel();
             SUGAR.ajaxUI.showErrorMessage(o.responseText);
         }
+        SUGAR_callsInProgress--;
     },
     showErrorMessage : function(errorMessage)
     {
@@ -163,6 +175,7 @@ SUGAR.ajaxUI = {
 
     go : function(url)
     {
+
         if(YAHOO.lang.trim(url) != "")
         {
             var con = YAHOO.util.Connect, ui = SUGAR.ajaxUI;
@@ -215,10 +228,12 @@ SUGAR.ajaxUI = {
                 }
             }
             else {
+                SUGAR_callsInProgress++;
                 SUGAR.ajaxUI.showLoadingPanel();
                 ui.lastCall = YAHOO.util.Connect.asyncRequest('GET', url + '&ajax_load=1' + loadLanguageJS, {
                     success: SUGAR.ajaxUI.callback,
                     failure: function(){
+                        SUGAR_callsInProgress--;
                         SUGAR.ajaxUI.hideLoadingPanel();
                         SUGAR.ajaxUI.showErrorMessage(SUGAR.language.get('app_strings','ERR_AJAX_LOAD_FAILURE'));
                     }

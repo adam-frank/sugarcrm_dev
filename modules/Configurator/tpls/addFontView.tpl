@@ -1,7 +1,7 @@
 {*
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -92,14 +92,6 @@
             <td  scope="row">{$MOD.LBL_PDF_ENCODING_TABLE}: <span class="required">*</span>{sugar_help text=$MOD.LBL_PDF_ENCODING_TABLE_INFO} </td>
             <td>
                 {html_options name="pdf_encoding_table" options=$ENCODING_TABLE}
-            </td>
-            <td  scope="row"></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td  scope="row">{$MOD.LBL_PDF_PATCH}:{sugar_help text=$MOD.LBL_PDF_PATCH_INFO} </td>
-            <td>
-                <textarea size='60' name='pdf_patch' id='pdf_patch' rows="4" cols="80"></textarea>
             </td>
             <td  scope="row"></td>
             <td></td>

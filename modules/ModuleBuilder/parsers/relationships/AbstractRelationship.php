@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -162,7 +162,21 @@ class AbstractRelationship
         $this->deleted = $this->definition [ 'deleted' ] = true ;
     }
     
-    
+    public function getFromStudio()
+    {
+        return $this->from_studio;
+    }
+
+    public function getLhsModule()
+    {
+        return $this->lhs_module;
+    }
+
+    public function getRhsModule()
+    {
+        return $this->rhs_module;
+    }
+
     public function getType ()
     {
         return $this->relationship_type ;
@@ -319,6 +333,8 @@ class AbstractRelationship
         $vardef [ 'type' ] = 'link' ;
         $vardef [ 'relationship' ] = $relationshipName ;
         $vardef [ 'source' ] = 'non-db' ;
+        $vardef [ 'module' ] = $sourceModule ;
+        $vardef [ 'bean_name' ] = BeanFactory::getObjectName($sourceModule) ;
         if ($right_side)
         	$vardef [ 'side' ] = 'right' ;
         if (!empty($vname))

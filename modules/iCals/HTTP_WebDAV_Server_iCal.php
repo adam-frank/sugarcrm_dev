@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -129,7 +129,7 @@ require_once 'modules/vCals/HTTP_WebDAV_Server_vCal.php';
              echo $this->vcal_focus->get_vcal_freebusy($this->user_focus);
            } else if ($this->vcal_type == 'ics') {
              // DO HTTP AUTHORIZATION for iCal:
-             if ( $this->user_focus->getPreference('calendar_publish_key') &&
+             if ( empty($this->publish_key ) ||
                 $this->publish_key != $this->user_focus->getPreference('calendar_publish_key' )) {
                     $this->http_status("401 not authorized");
                     header('WWW-Authenticate: Basic realm="SugarCRM iCal"');

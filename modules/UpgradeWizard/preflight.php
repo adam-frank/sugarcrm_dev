@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -55,10 +55,10 @@ $mod_strings = return_module_language($curr_lang, 'UpgradeWizard',true);
 
 function check_php($sys_php_version = '')
 {
-    $min_considered_php_version = '5.2.1';
+    $min_considered_php_version = '5.2.2';
 
     $supported_php_versions = array (
-    '5.2.1', '5.2.2', '5.2.3', '5.2.4', '5.2.5', '5.2.6', '5.2.8', '5.3.0'
+    '5.2.2', '5.2.3', '5.2.4', '5.2.5', '5.2.6', '5.2.8', '5.3.0'
     );
     //Find out what Database the system is using.
     global $sugar_config;
@@ -142,9 +142,7 @@ if (version_compare(phpversion(),'5.2.0') >=0) {
 	$db =& DBManagerFactory::getInstance();
 
 	//Quickcreatedefs on the basis of editviewdefs
-    if(substr($sugar_version,0,1) >= 5){
-    	updateQuickCreateDefs();
-	}
+    updateQuickCreateDefs();
 	upgradeSugarCache($_SESSION['install_file']);
 
 	if((count($errors) == 1)) { // only diffs
@@ -271,51 +269,51 @@ $diffs ='';
 ////	SCHEMA SCRIPT HANDLING
 	logThis('starting schema preflight check...');
 	//Check the current and target versions and store them in session variables
-	if(!isset($sugar_db_version) || empty($sugar_db_version)) {
-		include('./sugar_version.php');
-	}
+    if (empty($sugar_db_version))
+    {
+        include('sugar_version.php');
+    }
 	if(!isset($manifest['version']) || empty($manifest['version'])) {
 		include($_SESSION['unzip_dir'].'/manifest.php');
 	}
-	$current_version = substr(preg_replace("#[^0-9]#", "", $sugar_db_version),0,3);
-	$targetVersion =  substr(preg_replace("#[^0-9]#", "", $manifest['version']),0,3);
+
+    $origVersion = implodeVersion($sugar_db_version, 3, '0');
+    $destVersion = implodeVersion($manifest['version'], 3, '0');
 
 	//save the versions as session variables
-	$_SESSION['current_db_version'] = $current_version;
-	$_SESSION['target_db_version']  = $targetVersion;
+    $_SESSION['current_db_version'] = $sugar_db_version;
+    $_SESSION['target_db_version']  = $manifest['version'];
 	$_SESSION['upgrade_from_flavor']  = $manifest['name'];
 	// aw: BUG 10161: check flavor conversion sql files
 	$sqlFile = ''; // cn: bug
-	if($current_version == $targetVersion) {
+    if (version_compare($sugar_db_version, $manifest['version'], '='))
+    {
 	    $type = $db->getScriptName();
 
-		if(preg_match('/(.*?)([^0])$/', $current_version, $matches))
-		{
-			$current_version = $matches[1].'0';
-		}
-		switch($manifest['name']){
-			case 'SugarCE to SugarPro':
-				$sqlFile = $current_version.'_ce_to_pro_'.$type;
-				break;
-			case 'SugarCE to SugarEnt':
-				$sqlFile = $current_version.'_ce_to_ent_'.$type;
-				break;
+        switch($manifest['name'])
+        {
+            case 'SugarCE to SugarPro':
+                $sqlFile = $origVersion . '_ce_to_pro_' . $type;
+                break;
+            case 'SugarCE to SugarEnt':
+                $sqlFile = $origVersion . '_ce_to_ent_' . $type;
+                break;
             case 'SugarCE to SugarCorp':
-				$sqlFile = $current_version.'_ce_to_corp_'.$db->dbType;
-				break;
+                $sqlFile = $origVersion . '_ce_to_corp_' . $db->dbType;
+                break;
             case 'SugarCE to SugarUlt':
-				$sqlFile = $current_version.'_ce_to_ult_'.$db->dbType;
-				break;
-			case 'SugarPro to SugarEnt':
-				$sqlFile = $current_version.'_pro_to_ent_'.$type;
-				break;
-			default:
-				break;
-		}
+                $sqlFile = $origVersion . '_ce_to_ult_' . $db->dbType;
+                break;
+            case 'SugarPro to SugarEnt':
+                $sqlFile = $origVersion . '_pro_to_ent_' . $type;
+                break;
+            default:
+                break;
+        }
 	} else {
 	    $type = $db->dbType;
         if($type == 'oci8') $type = 'oracle';
-		$sqlFile = $current_version.'_to_'.$targetVersion.'_'.$type;
+        $sqlFile = $origVersion . '_to_' . $destVersion . '_' . $type;
 	}
 
 	$newTables = array();
@@ -366,10 +364,10 @@ $diffs ='';
 	logThis('schema preflight done.');
 ////	END SCHEMA SCRIPT HANDLING
 ///////////////////////////////////////////////////////////////////////////////
-//php 521 suggestion
-	$php_521 = '';
-	if(version_compare(phpversion(),'5.2.1') < 0){
-		$php_521=$mod_strings['LBL_CURRENT_PHP_VERSION'].phpversion().$mod_strings['LBL_RECOMMENDED_PHP_VERSION'];
+//php version suggestion
+    $php_suggested_ver = '';
+	if(version_compare(phpversion(),'5.2.2') < 0){
+		$php_suggested_ver=$mod_strings['LBL_CURRENT_PHP_VERSION'].phpversion().$mod_strings['LBL_RECOMMENDED_PHP_VERSION'];
 	}
 	if(empty($mod_strings['LBL_UPGRADE_TAKES_TIME_HAVE_PATIENCE'])){
 		$mod_strings['LBL_UPGRADE_TAKES_TIME_HAVE_PATIENCE'] = 'Upgrade may take some time';
@@ -445,7 +443,7 @@ eoq5;
 else{
 	$stop = true;
 	if(empty($mod_strings['LBL_INCOMPATIBLE_PHP_VERSION'])){
-		$mod_strings['LBL_INCOMPATIBLE_PHP_VERSION'] = 'Php version 5.2.1 or above is required.';
+		$mod_strings['LBL_INCOMPATIBLE_PHP_VERSION'] = 'Php version 5.2.2 or above is required.';
 	}
 
 $php_verison_warning =<<<eoq
@@ -495,4 +493,3 @@ $stepCancel		= -1;
 $stepRecheck	= $_REQUEST['step'];
 
 $_SESSION['step'][$steps['files'][$_REQUEST['step']]] = ($stop) ? 'failed' : 'success';
-?>

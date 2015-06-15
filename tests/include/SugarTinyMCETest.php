@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -47,13 +47,18 @@ class SugarTinyMCETest extends Sugar_PHPUnit_Framework_TestCase{
 	
 	static $customConfigFile = 'custom/include/tinyButtonConfig.php';
 	static $customDefaultConfigFile = 'custom/include/tinyMCEDefaultConfig.php';
-	static $MCE;
+    static $directory = 'custom/include';
+    static $MCE;
 	
 	/*
 	 * Setup: Backup old custom files and create new ones for the test
 	 */
 	public static function setUpBeforeClass(){
-		
+
+        if (!file_exists(self::$directory)) {
+            sugar_mkdir(self::$directory, 0777, true);
+        }
+
 		if(file_exists(self::$customConfigFile)){
 			rename(self::$customConfigFile, self::$customConfigFile . ".bak");
 		}

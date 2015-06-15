@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -94,11 +94,11 @@ class SugarCronJobs
     {
         $this->queue = new SugarJobQueue();
         $this->lockfile = sugar_cached("modules/Schedulers/lastrun");
-        if(!empty($GLOBALS['sugar_config']['cron']['max_jobs'])) {
+        if(!empty($GLOBALS['sugar_config']['cron']['max_cron_jobs'])) {
             $this->max_jobs = $GLOBALS['sugar_config']['cron']['max_cron_jobs'];
         }
         if(!empty($GLOBALS['sugar_config']['cron']['max_cron_runtime'])) {
-            $this->max_jobs = $GLOBALS['sugar_config']['cron']['max_cron_runtime'];
+            $this->max_runtime = $GLOBALS['sugar_config']['cron']['max_cron_runtime'];
         }
         if(isset($GLOBALS['sugar_config']['cron']['min_cron_interval'])) {
             $this->min_interval = $GLOBALS['sugar_config']['cron']['min_cron_interval'];
@@ -185,6 +185,10 @@ class SugarCronJobs
         if(!$this->job->runJob()) {
             // if some job fails, change run status
             $this->jobFailed($this->job);
+        }
+        // If the job produced a session, destroy it - we won't need it anymore
+        if(session_id()) {
+            session_destroy();
         }
     }
 

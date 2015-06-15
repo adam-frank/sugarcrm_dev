@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -170,18 +170,23 @@ class ChartsDashlet extends Dashlet {
     	return $additionalTitle;
     }    
 
-    function setRefreshIcon(){
-    	
-    	
+   function setRefreshIcon(){
+
+
     	$additionalTitle = '';
         if($this->isRefreshable)
-            $additionalTitle .= '<a href="#" onclick="SUGAR.mySugar.retrieveDashlet(\'' 
-                                . $this->id . '\', \'chart\'); return false;"><!--not_in_theme!--><img border="0" align="absmiddle" title="' . translate('LBL_DASHLET_REFRESH', 'Home') . '" alt="' . translate('LBL_DASHLET_REFRESH', 'Home') . '" src="' 
-
-                                . SugarThemeRegistry::current()->getImageURL('dashlet-header-refresh.png') .'" /></a>';	
+            $additionalTitle .= '<a href="#" onclick="SUGAR.mySugar.retrieveDashlet(\''
+                                . $this->id . '\', \'chart\'); return false;"><!--not_in_theme!-->'
+                                . SugarThemeRegistry::current()->getImage(
+                    'dashlet-header-refresh',
+                    'border="0" align="absmiddle" title="'. translate('LBL_DASHLET_REFRESH', 'Home') . '"',
+                    null,
+                    null,
+                    '.gif',
+                    translate('LBL_DASHLET_REFRESH', 'Home')
+                ) .'</a>';
         return $additionalTitle;
-    }
-    
+    } 
 }
 
 ?>

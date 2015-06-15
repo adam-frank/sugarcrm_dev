@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -42,12 +42,12 @@ require_once 'tests/SugarTestAccountUtilities.php';
 class RunnableSchedulersJobsTest extends Sugar_PHPUnit_Framework_TestCase
 {
     public $jobs = array();
-    private $jobRan = FALSE;
 
     public function setUp()
     {
         $this->db = DBManagerFactory::getInstance();
-        $this->jobRan = FALSE;
+        SugarTestHelper::setUp('beanFiles');
+        SugarTestHelper::setUp('beanList');
     }
 
     public function tearDown()
@@ -90,6 +90,7 @@ class RunnableSchedulersJobsTest extends Sugar_PHPUnit_Framework_TestCase
 
         $this->assertEquals(SchedulersJob::JOB_SUCCESS, $job->resolution, "Wrong resolution");
         $this->assertEquals(SchedulersJob::JOB_STATUS_DONE, $job->status, "Wrong status");
+        $this->assertEquals($GLOBALS['current_user']->id, $job->user->id, "Wrong user");
 
         // function with args
         $job = $this->createJob(array("name" => "Test Func 2", "status" => SchedulersJob::JOB_STATUS_RUNNING,
@@ -101,6 +102,7 @@ class RunnableSchedulersJobsTest extends Sugar_PHPUnit_Framework_TestCase
         $this->assertEquals($job->runnable_data, "function data", "Argument 2 doesn't match");
         $this->assertEquals(SchedulersJob::JOB_SUCCESS, $job->resolution, "Wrong resolution");
         $this->assertEquals(SchedulersJob::JOB_STATUS_DONE, $job->status, "Wrong status");
+        $this->assertEquals($GLOBALS['current_user']->id, $job->user->id, "Wrong user");
     }
 }
 
@@ -113,7 +115,8 @@ class TestRunnableJob implements RunnableSchedulerJob
     {
         $this->job->runnable_ran = true;
         $this->job->runnable_data = $data;
-        $this->job->succeedJob();
+        $this->job->user = $GLOBALS['current_user'];
+        return $this->job->succeedJob();
     }
 
     public function setJob(SchedulersJob $job)

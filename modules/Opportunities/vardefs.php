@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -120,6 +120,7 @@ $dictionary['Opportunity'] = array('table' => 'opportunities','audited'=>true, '
 		'table' => 'campaigns',
 		'module'=>'Campaigns',
 		'source' => 'non-db',
+        'additionalFields' => array('id' => 'campaign_id')
 	),
   'campaign_opportunities' =>
 		array (
@@ -165,7 +166,11 @@ $dictionary['Opportunity'] = array('table' => 'opportunities','audited'=>true, '
     'duplicate_merge'=>'0',
     'audited'=>true,
     'comment' => 'Formatted amount of the opportunity',
-    'studio' => array('wirelesseditview'=>false, 'wirelessdetailview'=>false, 'editview'=>false, 'detailview'=>false, 'quickcreate'=>false,),
+    'studio' => array(
+        'editview'=>false,
+        'detailview'=>false,
+        'quickcreate'=>false,
+    ),
   ),
   'currency_id' =>
   array (
@@ -273,6 +278,7 @@ $dictionary['Opportunity'] = array('table' => 'opportunities','audited'=>true, '
     'bean_name'=>'Contact',
     'rel_fields'=>array('contact_role'=>array('type'=>'enum', 'options'=>'opportunity_relationship_type_dom')),
 	'vname'=>'LBL_CONTACTS',
+    'hide_history_contacts_emails' => true,
   ),
   'tasks' =>
   array (

@@ -3,7 +3,7 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -89,7 +89,15 @@ class ConfiguratorViewAddFontResult extends SugarView {
         if(!$error){
             require_once('include/Sugarpdf/FontManager.php');
             $fontManager = new FontManager();
-            $error = $fontManager->addFont($uploadFileNames["pdf_font_file"],$uploadFileNames["pdf_metric_file"], $_REQUEST['pdf_embedded'], $_REQUEST['pdf_encoding_table'], eval($_REQUEST['pdf_patch']), htmlspecialchars_decode($_REQUEST['pdf_cidinfo'],ENT_QUOTES), $_REQUEST['pdf_style_list']);
+            $error = $fontManager->addFont(
+                $uploadFileNames["pdf_font_file"],
+                $uploadFileNames["pdf_metric_file"],
+                $_REQUEST['pdf_embedded'],
+                $_REQUEST['pdf_encoding_table'],
+                array(),
+                htmlspecialchars_decode($_REQUEST['pdf_cidinfo'], ENT_QUOTES),
+                $_REQUEST['pdf_style_list']
+            );
             $this->log .= $fontManager->log;
             if($error){
                 $this->log .= implode("\n",$fontManager->errors);

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -83,14 +83,24 @@ class ListViewData {
             $_SESSION['lvd']['last_ob'] = $orderBy;
         }
 		else {
+            $userPreferenceOrder = $GLOBALS['current_user']->getPreference('listviewOrder', $this->var_name);
 			if(!empty($_SESSION[$this->var_order_by])) {
 				$orderBy = $_SESSION[$this->var_order_by]['orderBy'];
 				$direction = $_SESSION[$this->var_order_by]['direction'];
-			}
-			else{
+            } elseif (!empty($userPreferenceOrder)) {
+                $orderBy = $userPreferenceOrder['orderBy'];
+                $direction = $userPreferenceOrder['sortOrder'];
+            } else {
 				$orderBy = 'date_entered';
 				$direction = 'DESC';
 			}
+		}
+		if(!empty($direction)) {
+    		if(strtolower($direction) == "desc") {
+    		    $direction = 'DESC';
+    		} else {
+    		    $direction = 'ASC';
+    		}
 		}
 		return array('orderBy' => $orderBy, 'sortOrder' => $direction);
 	}
@@ -122,46 +132,30 @@ class ListViewData {
 		return (!empty($_REQUEST[$this->var_offset])) ? $_REQUEST[$this->var_offset] : 0;
 	}
 
-	/**
-	 * generates the base url without
-	 * any files in the block variables will not be part of the url
-	 *
-	 *
-	 * @return STRING (the base url)
-	 */
-	function getBaseURL() {
+    /**
+     * generates the base url without
+     * any files in the block variables will not be part of the url
+     *
+     * @return Array (the base url as an array)
+     */
+    protected function getBaseQuery()
+    {
         global $beanList;
-		if(empty($this->base_url)) {
-            $blockVariables = array('mass', 'uid', 'massupdate', 'delete', 'merge', 'selectCount',$this->var_order_by, $this->var_offset, 'lvso', 'sortOrder', 'orderBy', 'request_data', 'current_query_by_page');
-            $base_url = 'index.php?';
-            foreach($beanList as $bean) {
-                $blockVariables[] = 'Home2_'.strtoupper($bean).'_ORDER_BY';
-            }
-            $blockVariables[] = 'Home2_CASE_ORDER_BY';
-            // Added mostly for the unit test runners, which may not have these superglobals defined
-            $params = array();
-            if ( isset($_POST) && is_array($_POST) ) {
-                $params = array_merge($params,$_POST);
-            }
-            if ( isset($_GET) && is_array($_GET) ) {
-                $params = array_merge($params,$_GET);
-            }
-            foreach($params as $name=>$value) {
-                if(!in_array($name, $blockVariables)){
-					if(is_array($value)) {
-						foreach($value as $v) {
-                            $base_url .= $name.urlencode('[]').'='.urlencode($v) . '&';
-                        }
-                    }
-                    else {
-						$base_url .= $name.'='.urlencode($value) . '&';
-                    }
-                }
-            }
-            $this->base_url = $base_url;
+
+        $blockVariables = array('mass', 'uid', 'massupdate', 'delete', 'merge', 'selectCount',$this->var_order_by, $this->var_offset, 'lvso', 'sortOrder', 'orderBy', 'request_data', 'current_query_by_page');
+        foreach($beanList as $bean)
+        {
+            $blockVariables[] = 'Home2_'.strtoupper($bean).'_ORDER_BY';
         }
-		return $this->base_url;
-	}
+        $blockVariables[] = 'Home2_CASE_ORDER_BY';
+
+        // Added mostly for the unit test runners, which may not have these superglobals defined
+        $params = array_merge($_POST, $_GET);
+        $params = array_diff_key($params, array_flip($blockVariables));
+
+        return $params;
+    }
+
 	/**
 	 * based off of a base name it sets base, offset, and order by variable names to retrieve them from requests and sessions
 	 *
@@ -254,12 +248,6 @@ class ListViewData {
             $order = $this->getOrderBy(); // retreive from $_REQUEST
         }
 
-        // else use stored preference
-        $userPreferenceOrder = $current_user->getPreference('listviewOrder', $this->var_name);
-
-        if(empty($order['orderBy']) && !empty($userPreferenceOrder)) {
-            $order = $userPreferenceOrder;
-        }
         // still empty? try to use settings passed in $param
         if(empty($order['orderBy']) && !empty($params['orderBy'])) {
             $order['orderBy'] = $params['orderBy'];
@@ -429,11 +417,14 @@ class ListViewData {
 				    $pageData['tag'][$dataIndex] = $pageData['tag'][$idIndex[$row[$id_field]][0]];
 				}
 				$data[$dataIndex] = $temp->get_list_view_data($filter_fields);
-			    $pageData['rowAccess'][$dataIndex] = array('view' => $temp->ACLAccess('DetailView'), 'edit' => $temp->ACLAccess('EditView'));
-			    $additionalDetailsAllow = $this->additionalDetails && $temp->ACLAccess('DetailView') && (file_exists('modules/' . $temp->module_dir . '/metadata/additionalDetails.php') || file_exists('custom/modules/' . $temp->module_dir . '/metadata/additionalDetails.php'));
-			    //if($additionalDetailsAllow) $pageData['additionalDetails'] = array();
-			    $additionalDetailsEdit = $temp->ACLAccess('EditView');
-				if($additionalDetailsAllow) {
+                $detailViewAccess = $temp->ACLAccess('DetailView');
+                $editViewAccess = $temp->ACLAccess('EditView');
+                $pageData['rowAccess'][$dataIndex] = array('view' => $detailViewAccess, 'edit' => $editViewAccess);
+                $additionalDetailsAllow = $this->additionalDetails && $detailViewAccess && (file_exists(
+                         'modules/' . $temp->module_dir . '/metadata/additionalDetails.php'
+                     ) || file_exists('custom/modules/' . $temp->module_dir . '/metadata/additionalDetails.php'));
+                $additionalDetailsEdit = $editViewAccess;
+                if($additionalDetailsAllow) {
                     if($this->additionalDetailsAjax) {
 					   $ar = $this->getAdditionalDetailsAjax($data[$dataIndex]['ID']);
                     }
@@ -476,7 +467,10 @@ class ListViewData {
 		$endOffset = (floor(($totalCount - 1) / $limit)) * $limit;
 		$pageData['ordering'] = $order;
 		$pageData['ordering']['sortOrder'] = $this->getReverseSortOrder($pageData['ordering']['sortOrder']);
-		$pageData['urls'] = $this->generateURLS($pageData['ordering']['sortOrder'], $offset, $prevOffset, $nextOffset,  $endOffset, $totalCounted);
+        //get url parameters as an array
+        $pageData['queries'] = $this->generateQueries($pageData['ordering']['sortOrder'], $offset, $prevOffset, $nextOffset,  $endOffset, $totalCounted);
+        //join url parameters from array to a string
+        $pageData['urls'] = $this->generateURLS($pageData['queries']);
 		$pageData['offsets'] = array( 'current'=>$offset, 'next'=>$nextOffset, 'prev'=>$prevOffset, 'end'=>$endOffset, 'total'=>$totalCount, 'totalCounted'=>$totalCounted);
 		$pageData['bean'] = array('objectName' => $seed->object_name, 'moduleDir' => $seed->module_dir, 'moduleName' => strtr($seed->module_dir, $module_names));
         $pageData['stamp'] = $this->stamp;
@@ -485,10 +479,10 @@ class ListViewData {
         if(!$this->seed->ACLAccess('ListView')) {
             $pageData['error'] = 'ACL restricted access';
         }
-        
+
         $queryString = '';
-		
-        if( isset($_REQUEST["searchFormTab"]) && $_REQUEST["searchFormTab"] == "advanced_search" || 
+
+        if( isset($_REQUEST["searchFormTab"]) && $_REQUEST["searchFormTab"] == "advanced_search" ||
         	isset($_REQUEST["type_basic"]) && (count($_REQUEST["type_basic"] > 1) || $_REQUEST["type_basic"][0] != "") ||
         	isset($_REQUEST["module"]) && $_REQUEST["module"] == "MergeRecords")
         {
@@ -510,51 +504,80 @@ class ListViewData {
                 $field_name .= "_basic";
                 if( isset($_REQUEST[$field_name])  && ( !is_array($basicSearchField) || !isset($basicSearchField['type']) || $basicSearchField['type'] == 'text' || $basicSearchField['type'] == 'name') )
                 {
-                    $queryString = htmlentities($_REQUEST[$field_name]);
+                    // Ensure the encoding is UTF-8
+                    $queryString = htmlentities($_REQUEST[$field_name], null, 'UTF-8');
                     break;
                 }
             }
         }
 
-
 		return array('data'=>$data , 'pageData'=>$pageData, 'query' => $queryString);
 	}
 
 
-	/**
-	 * generates urls for use by the display  layer
-	 *
-	 * @param int $sortOrder
-	 * @param int $offset
-	 * @param int $prevOffset
-	 * @param int $nextOffset
-	 * @param int $endOffset
-	 * @param int $totalCounted
-	 * @return array of urls orderBy and baseURL are always returned the others are only returned  according to values passed in.
-	 */
-	function generateURLS($sortOrder, $offset, $prevOffset, $nextOffset, $endOffset, $totalCounted) {
-		$urls = array();
-		$urls['baseURL'] = $this->getBaseURL(). 'lvso=' . $sortOrder. '&';
-		$urls['orderBy'] = $urls['baseURL'] .$this->var_order_by.'=';
+    /**
+     * generates urls as a string for use by the display layer
+     *
+     * @param array $queries
+     * @return array of urls orderBy and baseURL are always returned the others are only returned  according to values passed in.
+     */
+    protected function generateURLS($queries)
+    {
+        foreach ($queries as $name => $value)
+        {
+            $queries[$name] = 'index.php?' . http_build_query($value);
+        }
+        $this->base_url = $queries['baseURL'];
+        return $queries;
+    }
 
-		$dynamicUrl = '';
-		if($nextOffset > -1) {
-			$urls['nextPage'] = $urls['baseURL'] . $this->var_offset . '=' . $nextOffset . $dynamicUrl;
-		}
-		if($offset > 0) {
-			$urls['startPage'] = $urls['baseURL'] . $this->var_offset . '=0' . $dynamicUrl;
-		}
-		if($prevOffset > -1) {
-			$urls['prevPage'] = $urls['baseURL'] . $this->var_offset . '=' . $prevOffset . $dynamicUrl;
-		}
-		if($totalCounted) {
-			$urls['endPage'] = $urls['baseURL'] . $this->var_offset . '=' . $endOffset . $dynamicUrl;
-		}else{
-			$urls['endPage'] = $urls['baseURL'] . $this->var_offset . '=end' . $dynamicUrl;
-		}
+    /**
+     * generates queries for use by the display layer
+     *
+     * @param int $sortOrder
+     * @param int $offset
+     * @param int $prevOffset
+     * @param int $nextOffset
+     * @param int $endOffset
+     * @param int $totalCounted
+     * @return array of queries orderBy and baseURL are always returned the others are only returned  according to values passed in.
+     */
+    protected function generateQueries($sortOrder, $offset, $prevOffset, $nextOffset, $endOffset, $totalCounted)
+    {
+        $queries = array();
+        $queries['baseURL'] = $this->getBaseQuery();
+        $queries['baseURL']['lvso'] = $sortOrder;
 
-		return $urls;
-	}
+        $queries['orderBy'] = $queries['baseURL'];
+        $queries['orderBy'][$this->var_order_by] = '';
+
+        if($nextOffset > -1)
+        {
+            $queries['nextPage'] = $queries['baseURL'];
+            $queries['nextPage'][$this->var_offset] = $nextOffset;
+        }
+        if($offset > 0)
+        {
+            $queries['startPage'] = $queries['baseURL'];
+            $queries['startPage'][$this->var_offset] = 0;
+        }
+        if($prevOffset > -1)
+        {
+            $queries['prevPage'] = $queries['baseURL'];
+            $queries['prevPage'][$this->var_offset] = $prevOffset;
+        }
+        if($totalCounted)
+        {
+            $queries['endPage'] = $queries['baseURL'];
+            $queries['endPage'][$this->var_offset] = $endOffset;
+        }
+        else
+        {
+            $queries['endPage'] = $queries['baseURL'];
+            $queries['endPage'][$this->var_offset] = 'end';
+        }
+        return $queries;
+    }
 
 	/**
 	 * generates the additional details span to be retrieved via ajax
@@ -596,12 +619,12 @@ class ListViewData {
         {
             $results['string'] = $app_strings['LBL_NONE'];
         }
-         	$close = false;   
+         	$close = false;
             $extra = "<img alt='{$app_strings['LBL_INFOINLINE']}' style='padding: 0px 5px 0px 2px' border='0' onclick=\"SUGAR.util.getStaticAdditionalDetails(this,'";
-            
+
             $extra .= str_replace(array("\rn", "\r", "\n"), array('','','<br />'), $results['string']) ;
             $extra .= "','<div style=\'float:left\'>{$app_strings['LBL_ADDITIONAL_DETAILS']}</div><div style=\'float: right\'>";
-            
+
 	        if($editAccess && !empty($results['editLink']))
 	        {
 	            $extra .=  "<a title=\'{$app_strings['LBL_EDIT_BUTTON']}\' href={$results['editLink']}><img style=\'margin-left: 2px;\' border=\'0\' src=\'".SugarThemeRegistry::current()->getImageURL('edit_inline.png')."\'></a>";
@@ -609,12 +632,12 @@ class ListViewData {
 	        }
 	        $close = (!empty($results['viewLink'])) ? true : $close;
 	        $extra .= (!empty($results['viewLink']) ? "<a title=\'{$app_strings['LBL_VIEW_BUTTON']}\' href={$results['viewLink']}><img style=\'margin-left: 2px;\' border=\'0\' src=".SugarThemeRegistry::current()->getImageURL('view_inline.png')."></a>" : '');
-            
+
             if($close == true) {
-            	$closeVal = "true";	
+            	$closeVal = "true";
             	$extra .=  "<a title=\'{$app_strings['LBL_ADDITIONAL_DETAILS_CLOSE_TITLE']}\' href=\'javascript: SUGAR.util.closeStaticAdditionalDetails();\'><img style=\'margin-left: 2px;\' border=\'0\' src=\'".SugarThemeRegistry::current()->getImageURL('close.png')."\'></a>";
             } else {
-            	$closeVal = "false";	
+            	$closeVal = "false";
             }
             $extra .= "',".$closeVal.")\" src='".SugarThemeRegistry::current()->getImageURL('info_inline.png')."' class='info'>";
 

@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -52,19 +52,16 @@ class RESTAPI4_1Test extends Sugar_PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        global $beanList, $beanFiles, $current_user;
-        global $beanList, $beanFiles;
-        $beanList = array();
-	$beanFiles = array();
-	require('include/modules.php');
+        global $current_user;
+        SugarTestHelper::setUp("beanList");
+        SugarTestHelper::setUp("beanFiles");
+        SugarTestHelper::setUp("current_user");
 
         $this->_soapURL = $GLOBALS['sugar_config']['site_url'] . '/service/v4_1/soap.php';
         parent::setUp();
         $current_user = SugarTestUserUtilities::createAnonymousUser();
         $this->another_user = SugarTestUserUtilities::createAnonymousUser();
         $this->_login();
-        global $current_user;
-        $current_user = SugarTestUserUtilities::createAnonymousUser();
         $this->another_user = SugarTestUserUtilities::createAnonymousUser();
 
         $this->contact1 = SugarTestContactUtilities::createContact();
@@ -134,12 +131,10 @@ class RESTAPI4_1Test extends Sugar_PHPUnit_Framework_TestCase
         SugarTestMeetingUtilities::removeMeetingContacts();
         SugarTestMeetingUtilities::removeAllCreatedMeetings();
         SugarTestCallUtilities::removeAllCreatedCalls();
-	    unset($GLOBALS['beanList']);
-		unset($GLOBALS['beanFiles']);
-		unset($GLOBALS['app_list_strings']);
+        SugarTestHelper::tearDown();
+        unset($GLOBALS['app_list_strings']);
 	    unset($GLOBALS['app_strings']);
 	    unset($GLOBALS['mod_strings']);
-	    unset($GLOBALS['current_user']);
 	}
 
     protected function _makeRESTCall($method,$parameters)

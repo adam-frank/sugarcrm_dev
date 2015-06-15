@@ -2,7 +2,7 @@
  if(!defined('sugarEntry'))define('sugarEntry', true);
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -79,6 +79,11 @@ sugar_cleanup(false);
 if(class_exists('DBManagerFactory')) {
 	$db = DBManagerFactory::getInstance();
 	$db->disconnect();
+}
+
+// If we have a session left over, destroy it
+if(session_id()) {
+    session_destroy();
 }
 
 if($exit_on_cleanup) exit($jobq->runOk()?0:1);

@@ -3,7 +3,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -49,8 +49,16 @@ global $cal_strings, $current_language;
 $cal_strings = return_module_language($current_language, 'Calendar');
 
 if(empty($_REQUEST['view'])){
-	$_REQUEST['view'] = SugarConfig::getInstance()->get('calendar.default_view','week');
+    if (isset($_SESSION['CALENDAR_VIEW']) && in_array($_SESSION['CALENDAR_VIEW'], array("day","week","month","year","shared")))
+    {
+        $_REQUEST['view'] = $_SESSION['CALENDAR_VIEW'];
+    }
+    else
+    {
+        $_REQUEST['view'] = SugarConfig::getInstance()->get('calendar.default_view','week');
+    }
 }
+$_SESSION['CALENDAR_VIEW'] = $_REQUEST['view'];
 
 $cal = new Calendar($_REQUEST['view']);
 

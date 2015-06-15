@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -47,6 +47,7 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 
 
 require_once('modules/Users/authentication/SugarAuthenticate/SugarAuthenticate.php');
+require_once('modules/Users/authentication/SAMLAuthenticate/lib/onelogin/saml.php');
 class SAMLAuthenticate extends SugarAuthenticate {
 	var $userAuthenticateClass = 'SAMLAuthenticateUser';
 	var $authenticationDir = 'SAMLAuthenticate';
@@ -70,10 +71,7 @@ class SAMLAuthenticate extends SugarAuthenticate {
     {
         parent::pre_login();
 
-        if (empty($_REQUEST['no_saml']))
-        {
-            SugarApplication::redirect('?entryPoint=SAML');
-        }
+        $this->redirectToLogin($GLOBALS['app']);
     }
 
     /**
@@ -87,5 +85,25 @@ class SAMLAuthenticate extends SugarAuthenticate {
         ob_clean();
         header('Location: index.php?module=Users&action=LoggedOut');
         sugar_cleanup(true);
+    }
+
+    /**
+     * Redirect to login page
+     * 
+     * @param SugarApplication $app
+     */
+    public function redirectToLogin(SugarApplication $app)
+    {
+        require(get_custom_file_if_exists('modules/Users/authentication/SAMLAuthenticate/settings.php'));
+
+        $loginVars = $app->createLoginVars();
+
+        // $settings - variable from modules/Users/authentication/SAMLAuthenticate/settings.php
+        $settings->assertion_consumer_service_url .= htmlspecialchars($loginVars); 
+        
+        $authRequest = new SamlAuthRequest($settings);
+        $url = $authRequest->create();
+
+        $app->redirect($url);
     }
 }

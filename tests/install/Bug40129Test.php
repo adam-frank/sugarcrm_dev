@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -80,7 +80,7 @@ public function setUp() {
 	    'setup_license_key_users' => 100,
 	    'setup_license_key_expire_date' => '2010-12-25',
 	    'setup_license_key_oc_licences' => 1,
-	    'setup_license_key' => 'internal sugar user 20100224',
+	    'setup_license_key' => 'internal0653b21c5bd06e81c3d9dba9',
 	    'setup_site_url' => 'http://localhost/pineapple/build/rome/builds/ent/sugarcrm',
 	    'setup_system_name' => 'pineapple',
 	    'default_currency_iso4217' => 'USD',

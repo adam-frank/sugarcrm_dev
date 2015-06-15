@@ -1,7 +1,7 @@
 {*
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -88,21 +88,21 @@ var ERR_REENTER_PASSWORDS = '{$MOD.ERR_REENTER_PASSWORDS}';
 	<div id="popup_window"></div>
 
 <script type="text/javascript">
-var EditView_tabs_top = new YAHOO.widget.TabView("EditView_tabs_top");
+var EditView_tabs = new YAHOO.widget.TabView("EditView_tabs");
 
 {literal}
 //Override so we do not force submit, just simulate the 'save button' click
 SUGAR.EmailAddressWidget.prototype.forceSubmit = function() { document.getElementById('Save').click();}
 
-EditView_tabs_top.on('contentReady', function(e){
+EditView_tabs.on('contentReady', function(e){
 {/literal}
 {if $ID}
 {literal}
     var eapmTabIndex = 4;
     {/literal}{if !$SHOW_THEMES}{literal}eapmTabIndex = 3;{/literal}{/if}{literal}
-    EditView_tabs_top.getTab(eapmTabIndex).set('dataSrc','index.php?sugar_body_only=1&module=Users&subpanel=eapm&action=SubPanelViewer&inline=1&record={/literal}{$ID}{literal}&layout_def_key=UserEAPM&inline=1&ajaxSubpanel=true');
-    EditView_tabs_top.getTab(eapmTabIndex).set('cacheData',true);
-    EditView_tabs_top.getTab(eapmTabIndex).on('dataLoadedChange',function(){
+    EditView_tabs.getTab(eapmTabIndex).set('dataSrc','index.php?sugar_body_only=1&module=Users&subpanel=eapm&action=SubPanelViewer&inline=1&record={/literal}{$ID}{literal}&layout_def_key=UserEAPM&inline=1&ajaxSubpanel=true');
+    EditView_tabs.getTab(eapmTabIndex).set('cacheData',true);
+    EditView_tabs.getTab(eapmTabIndex).on('dataLoadedChange',function(){
         //reinit action menus
         $("ul.clickMenu").each(function(index, node){
             $(node).sugarActionMenu();
@@ -110,10 +110,20 @@ EditView_tabs_top.on('contentReady', function(e){
     });
 
     if ( document.location.hash == '#tab5' ) {
-        EditView_tabs_top.selectTab(eapmTabIndex);
+        EditView_tabs.selectTab(eapmTabIndex);
     }
 {/literal}
 {/if}
+
+{if $scroll_to_cal}
+    {literal}
+        //we are coming from the tour welcome page, so we need to simulate a click on the 4th tab
+        // and scroll to the calendar_options div after the tabs have rendered
+        document.getElementById('tab4').click();
+        document.getElementById('calendar_options').scrollIntoView();
+    {/literal}
+{/if}
+
 });
 </script>
 
@@ -128,7 +138,7 @@ EditView_tabs_top.on('contentReady', function(e){
     </tr>
 </table>
 
-<div id="EditView_tabs_top" class="yui-navset">
+<div id="EditView_tabs" class="yui-navset">
     <ul class="yui-nav">
         <li class="selected"><a id="tab1" href="#tab1"><em>{$MOD.LBL_USER_INFORMATION}</em></a></li>
         <li {if $CHANGE_PWD == 0}style='display:none'{/if}><a id="tab2" href="#tab2"><em>{$MOD.LBL_CHANGE_PASSWORD_TITLE}</em></a></li>

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -145,7 +145,19 @@ class RSSDashlet extends Dashlet
     {
         // suppress XML errors
         libxml_use_internal_errors(true);
-        $rssdoc = simplexml_load_file($url);
+        $data = file_get_contents($url);
+        $urlparse = parse_url($url);
+        if (empty($urlparse['scheme']) || empty($urlparse['host'])) {
+            return $this->dashletStrings['ERR_LOADING_FEED'];
+        }
+        if ($urlparse['scheme'] != 'http' && $urlparse['scheme'] != 'https') {
+            return $this->dashletStrings['ERR_LOADING_FEED'];
+        }
+        if(!$data) {
+            return $this->dashletStrings['ERR_LOADING_FEED'];
+        }
+        libxml_disable_entity_loader(true);
+        $rssdoc = simplexml_load_string($data);
         // return back the error message if the loading wasn't successful
         if (!$rssdoc)
             return $this->dashletStrings['ERR_LOADING_FEED'];

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -40,13 +40,13 @@ require_once('include/MVC/View/views/view.edit.php');
 
 class SchedulersViewEdit extends ViewEdit {
 	protected static $xtDays = array(
-				0 => 'MON',
-				1 => 'TUE',
-				2 => 'WED',
-				3 => 'THU',
-				4 => 'FRI',
-				5 => 'SAT',
-				6 => 'SUN');
+				1 => 'MON',
+				2 => 'TUE',
+				3 => 'WED',
+				4 => 'THU',
+				5 => 'FRI',
+				6 => 'SAT',
+				0 => 'SUN');
 
 	public function __construct()
  	{

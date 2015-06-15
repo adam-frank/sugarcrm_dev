@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -44,23 +44,35 @@ class SugarTestProspectUtilities
 
     private function __construct() {}
 
-    public static function createProspect($id = '') 
+    public static function createProspect($id = '', $attributes = array())
     {
-        $first_name = 'SugarProspectFirst';
-    	$last_name = 'SugarProspectLast';
-    	$email1 = 'prospect@sugar.com';
-		$title = 'Test prospect title';
     	$prospect = new Prospect();
+        $first_name = 'SugarProspectFirst';
+        $last_name = 'SugarProspectLast';
+        $email1 = 'prospect@sugar.com';
+        $title = 'Test prospect title';
         $prospect->first_name = $first_name;
         $prospect->last_name = $last_name ;
-		$prospect->title = $title;
+        $prospect->title = $title;
         $prospect->email1 = 'prospect@sugar.com';
-		  
-        if(!empty($id))
-        {
+
+        if (!empty($id)) {
             $prospect->new_with_id = true;
             $prospect->id = $id;
         }
+
+        if (!empty($attributes)) {
+            if (!empty($attributes['id'])) {
+                $prospect->new_with_id = true;
+                $prospect->id = $attributes['id'];
+                unset($attributes['id']);
+            }
+
+            foreach ($attributes as $attribute => $value) {
+                $prospect->$attribute = $value;
+            }
+        }
+
         $prospect->save();
         self::$_createdProspects[] = $prospect;
         return $prospect;

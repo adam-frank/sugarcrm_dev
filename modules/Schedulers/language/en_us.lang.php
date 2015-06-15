@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -53,9 +53,11 @@ $mod_strings = array (
 'LBL_OOTB_CAMPAIGN'		=> 'Run Nightly Mass Email Campaigns',
 'LBL_OOTB_PRUNE'		=> 'Prune Database on 1st of Month',
 'LBL_OOTB_TRACKER'		=> 'Prune Tracker Tables',
+'LBL_OOTB_SUGARFEEDS'   => 'Prune SugarFeed Tables',
 'LBL_UPDATE_TRACKER_SESSIONS' => 'Update tracker_sessions Table',
 'LBL_OOTB_SEND_EMAIL_REMINDERS'	=> 'Run Email Reminder Notifications',
 'LBL_OOTB_CLEANUP_QUEUE' => 'Clean Jobs Queue',
+'LBL_OOTB_REMOVE_DOCUMENTS_FROM_FS' => 'Removal of documents from filesystem',
 
 // List Labels
 'LBL_LIST_JOB_INTERVAL' => 'Interval:',
@@ -158,7 +160,9 @@ $mod_strings = array (
 'LBL_POLLMONITOREDINBOXESFORBOUNCEDCAMPAIGNEMAILS' => 'Run Nightly Process Bounced Campaign Emails',
 'LBL_PRUNEDATABASE' => 'Prune Database on 1st of Month',
 'LBL_TRIMTRACKER' => 'Prune Tracker Tables',
+'LBL_TRIMSUGARFEEDS'   => 'Prune SugarFeed Tables',
 'LBL_SENDEMAILREMINDERS'=> 'Run Email Reminders Sending',
 'LBL_CLEANJOBQUEUE' => 'Cleanup Job Queue',
+'LBL_REMOVEDOCUMENTSFROMFS' => 'Removal of documents from filesystem',
 );
 ?>

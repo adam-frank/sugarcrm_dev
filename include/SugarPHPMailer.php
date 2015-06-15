@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -35,13 +35,6 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
  * "Powered by SugarCRM".
  ********************************************************************************/
 
-/*********************************************************************************
-
- * Description:  TODO: To be written.
- * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.
- * All Rights Reserved.
- * Contributor(s): ______________________________________..
- ********************************************************************************/
 require_once('include/phpmailer/class.phpmailer.php');
 require_once('include/OutboundEmail/OutboundEmail.php');
 
@@ -327,7 +320,9 @@ eoq;
 			} else {
 			    $mime_type = "image/".strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 			}
-		    $this->AddEmbeddedImage($file_location, $cid, $filename, 'base64', $mime_type);
+		    if (!$this->embeddedAttachmentExists($cid)) {
+		    	$this->AddEmbeddedImage($file_location, $cid, $filename, 'base64', $mime_type);
+		    }
 		    $i++;
         }
 		//replace references to cache with cid tag
@@ -335,27 +330,27 @@ eoq;
 		// remove bad img line from outbound email
 		$this->Body = preg_replace('#<img[^>]+src[^=]*=\"\/([^>]*?[^>]*)>#sim', '', $this->Body);
 	}
-
+	
 	/**
 	 * @param notes	array of note beans
 	 */
 	function handleAttachments($notes) {
 		global $sugar_config;
 
-        //replace references to cache/images with cid tag
-        $this->Body = str_replace(sugar_cached('images/'),'cid:',$this->Body);
-
-		if (empty($notes)) {
-				return;
-		}
 		// cn: bug 4864 - reusing same SugarPHPMailer class, need to clear attachments
 		$this->ClearAttachments();
+
+		//replace references to cache/images with cid tag
+        $this->Body = preg_replace(';=\s*"'.preg_quote(sugar_cached('images/'), ';').';','="cid:',$this->Body);
 
 		$this->replaceImageByRegex("(?:{$sugar_config['site_url']})?/?cache/images/", sugar_cached("images/"));
 
 		//Replace any embeded images using the secure entryPoint for src url.
 		$this->replaceImageByRegex("(?:{$sugar_config['site_url']})?index.php[?]entryPoint=download&(?:amp;)?[^\"]+?id=", "upload://", true);
 
+		if (empty($notes)) {
+				return;
+		}
 		//Handle regular attachments.
 		foreach($notes as $note) {
 				$mime_type = 'text/plain';
@@ -417,6 +412,27 @@ eoq;
             $this->Body = " ";
         }
         return parent::PreSend();
+    }
+
+    /**
+     * Checks if the embedded file is already attached.
+     * @access protected
+     * @param string $filename Name of the file to check.
+     * @return boolean
+     */
+    protected function embeddedAttachmentExists($filename)
+    {
+        $result = false;
+        for ($i = 0; $i < count($this->attachment); $i++)
+        {
+            if ($this->attachment[$i][1] == $filename)
+            {
+                $result = true;
+                break;
+            }
+        }
+
+        return $result;
     }
 
 } // end class definition

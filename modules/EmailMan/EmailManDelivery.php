@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -48,7 +48,12 @@ if (isset($_REQUEST['send_all']) && $_REQUEST['send_all']== true) {
 else  {
 	$send_all=false; //if set to true email delivery will continue..to run until all email have been delivered.
 }
-$GLOBALS['log'] = LoggerManager::getLogger('SugarCRM');
+
+if(!isset($GLOBALS['log']))
+{
+    $GLOBALS['log'] = LoggerManager::getLogger('SugarCRM');
+}
+
 $mail = new SugarPHPMailer();
 $admin = new Administration();
 $admin->retrieveSettings();

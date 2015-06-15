@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -57,6 +57,10 @@ if(!isset($beanList[$_REQUEST['module']]))
 	die("'".$_REQUEST['module']."' is not defined in \$beanList");
 }
 
+if (!isset($_REQUEST['subpanel'])) {
+    sugar_die('Subpanel was not defined');
+}
+
 $subpanel = $_REQUEST['subpanel'];
 $record = $_REQUEST['record'];
 $module = $_REQUEST['module'];
@@ -84,9 +88,13 @@ echo (empty($_REQUEST['inline']))?$subpanel_object->get_buttons():'' ;
 
 $subpanel_object->display();
 
+$jsAlerts = new jsAlerts();
+if (!isset($_SESSION['isMobile'])) {
+    echo $jsAlerts->getScript();
+}
+
 if(empty($_REQUEST['inline']))
 {
 	insert_popup_footer($theme);
 }
 
-?>

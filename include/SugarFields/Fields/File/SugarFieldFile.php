@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -89,7 +89,11 @@ class SugarFieldFile extends SugarFieldBase {
         return parent::getEditViewSmarty($parentFieldArray, $vardef, $displayParams, $tabindex);
     }
     
-	public function save(&$bean, $params, $field, $vardef, $prefix = ''){
+    function getSearchViewSmarty($parentFieldArray, $vardef, $displayParams, $tabindex) {
+    	return $this->getSmartyView($parentFieldArray, $vardef, $displayParams, $tabindex, 'SearchView');
+    }
+    
+    public function save(&$bean, $params, $field, $vardef, $prefix = ''){
         $fakeDisplayParams = array();
         $this->fillInOptions($vardef,$fakeDisplayParams);
 
@@ -187,5 +191,5 @@ class SugarFieldFile extends SugarFieldBase {
                 $bean->$clearField = '';
             }
         }
-	}
+    }
 }

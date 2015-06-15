@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -355,9 +355,14 @@ class ModuleBuilderController extends SugarController
         {
             $_REQUEST [ "label_" . $_REQUEST [ 'label' ] ] = $_REQUEST [ 'labelValue' ] ;
             require_once 'modules/ModuleBuilder/parsers/parser.label.php' ;
-            $parser = new ParserLabel ( $_REQUEST['view_module'] , isset ( $_REQUEST [ 'view_package' ] ) ? $_REQUEST [ 'view_package' ] : null ) ;
-            $parser->handleSave ( $_REQUEST, $GLOBALS [ 'current_language' ] ) ;
 
+            $req = $_REQUEST;
+            foreach (ModuleBuilder::getModuleAliases($_REQUEST['view_module']) as $key)
+            {
+                $req['view_module'] = $key;
+                $parser = new ParserLabel($req['view_module'], isset($req['view_package']) ? $req['view_package'] : null);
+                $parser->handleSave($req, $GLOBALS['current_language']);
+            }
         }
         $this->view = 'modulefields' ;
     }
@@ -648,6 +653,7 @@ class ModuleBuilderController extends SugarController
         {
             $mb = new ModuleBuilder ( ) ;
             $module = & $mb->getPackageModule ( $_REQUEST [ 'view_package' ], $_REQUEST [ 'view_module' ] ) ;
+            $field = $module->getField($field->name);
             $field->delete ( $module ) ;
             $mb->save () ;
         }

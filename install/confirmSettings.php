@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -353,7 +353,10 @@ if( $memory_limit == "" ){          // memory_limit disabled at compile time, no
     $memory_limit_int = intval($num);
     $SUGARCRM_MIN_MEM = (int) constant('SUGARCRM_MIN_MEM');
     if( $memory_limit_int < constant('SUGARCRM_MIN_MEM') ){
-        $memory_msg = "<span class='stop'><b>$memory_limit{$mod_strings['ERR_CHECKSYS_MEM_LIMIT_1']}" . constant('SUGARCRM_MIN_MEM') . "{$mod_strings['ERR_CHECKSYS_MEM_LIMIT_2']}</b></span>";
+        // Bug59667: The string ERR_CHECKSYS_MEM_LIMIT_2 already has 'M' in it,
+        // so we divide the constant by 1024*1024.
+        $min_mem_in_megs = constant('SUGARCRM_MIN_MEM')/(1024*1024);
+        $memory_msg = "<span class='stop'><b>$memory_limit{$mod_strings['ERR_CHECKSYS_MEM_LIMIT_1']}" . $min_mem_in_megs . "{$mod_strings['ERR_CHECKSYS_MEM_LIMIT_2']}</b></span>";
         $memory_msg = str_replace('$memory_limit', $mem_display, $memory_msg);
     } else {
         $memory_msg = "{$mod_strings['LBL_CHECKSYS_OK']} ({$memory_limit})";
@@ -393,7 +396,23 @@ if( $memory_limit == "" ){          // memory_limit disabled at compile time, no
             <td  >'.$zipStatus.'</td>
           </tr>';
 
-
+    // PCRE
+    if(defined('PCRE_VERSION')) {
+        if (version_compare(PCRE_VERSION, '7.0') < 0) {
+            $pcreStatus = "<span class='stop'><b>{$mod_strings['ERR_CHECKSYS_PCRE_VER']}</b></span>";
+        }
+        else {
+            $pcreStatus = "{$mod_strings['LBL_CHECKSYS_OK']}";
+        }
+    } else {
+        $pcreStatus = "<span class='stop'><b>{$mod_strings['ERR_CHECKSYS_PCRE']}</b></span>";
+    }
+            $envString .='
+          <tr>
+            <td></td>
+            <td><strong>'.$mod_strings['LBL_CHECKSYS_PCRE'].'</strong></td>
+            <td  >'.$pcreStatus.'</td>
+          </tr>';
 
     // imap
     if(function_exists('imap_open')) {

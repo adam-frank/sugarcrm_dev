@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -121,9 +121,9 @@ $out = <<<EOQ
 </body>
 </html>
 EOQ;
-if (version_compare(phpversion(),'5.2.0') < 0) {
+if (version_compare(phpversion(),'5.2.2') < 0) {
 	if(empty($mod_strings['LBL_MINIMUM_PHP_VERSION'])){
-		$mod_strings['LBL_MINIMUM_PHP_VERSION'] = 'Minimum Php version required is 5.2.1.';
+		$mod_strings['LBL_MINIMUM_PHP_VERSION'] = 'Minimum Php version required is 5.2.2.';
 	}
 
 $php_verison_warning =<<<eoq

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -216,14 +216,11 @@ class Relationship extends SugarBean {
 		while (($row=$this->db->fetchByAssoc($result))!=null) {
 			$relationships[$row['relationship_name']] = $row;
 		}
-
-		$rel_string='<?php ';
-		$rel_string.='$relationships='.var_export($relationships,true);
-		$rel_string.=' ?>';
-		mkdir_recursive($this->cache_file_dir());
-		$handle=sugar_fopen(Relationship::cache_file_dir().'/'.Relationship::cache_file_name_only(),'w');
-		fwrite($handle,$rel_string);
-		fclose($handle);
+		
+		sugar_mkdir($this->cache_file_dir(), null, true);
+        $out = "<?php \n \$relationships = " . var_export($relationships, true) . ";";
+        sugar_file_put_contents_atomic(Relationship::cache_file_dir() . '/' . Relationship::cache_file_name_only(), $out);
+		
         require_once("data/Relationships/RelationshipFactory.php");
         SugarRelationshipFactory::deleteCache();
 	}

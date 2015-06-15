@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -235,9 +235,6 @@ class SugarFieldBase {
         if ( $displayType == 'ListView'
                 || $displayType == 'popupView'
                 || $displayType == 'searchView'
-                || $displayType == 'wirelessEditView'
-                || $displayType == 'wirelessDetailView'
-                || $displayType == 'wirelessListView'
                 ) {
             // Traditionally, before 6.0, additional functions were never called, so this code doesn't get called unless the vardef forces it
             if ( $onListView ) {

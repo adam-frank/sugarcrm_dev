@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -37,6 +37,46 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 
 
 
+
+/**
+ * Implodes some parts of version with specified delimiter, beta & rc parts are removed all time
+ *
+ * @example ('6.5.6') returns 656
+ * @example ('6.5.6beta2') returns 656
+ * @example ('6.5.6rc3') returns 656
+ * @example ('6.6.0.1') returns 6601
+ * @example ('6.5.6', 3, 'x') returns 65x
+ * @example ('6', 3, '', '.') returns 6.0.0
+ *
+ * @param string $version like 6, 6.2, 6.5.0beta1, 6.6.0rc1, 6.5.7 (separated by dot)
+ * @param int $size number of the first parts of version which are requested
+ * @param string $lastSymbol replace last part of version by some string
+ * @param string $delimiter delimiter for result
+ * @return string
+ */
+function implodeVersion($version, $size = 0, $lastSymbol = '', $delimiter = '')
+{
+    preg_match('/^\d+(\.\d+)*/', $version, $parsedVersion);
+    if (empty($parsedVersion)) {
+        return '';
+    }
+
+    $parsedVersion = $parsedVersion[0];
+    $parsedVersion = explode('.', $parsedVersion);
+
+    if ($size == 0) {
+        $size = count($parsedVersion);
+    }
+
+    $parsedVersion = array_pad($parsedVersion, $size, 0);
+    $parsedVersion = array_slice($parsedVersion, 0, $size);
+    if ($lastSymbol !== '') {
+        array_pop($parsedVersion);
+        array_push($parsedVersion, $lastSymbol);
+    }
+
+    return implode($delimiter, $parsedVersion);
+}
 
 /**
  * Helper function for upgrade - get path from upload:// name
@@ -125,7 +165,7 @@ function commitCopyNewFiles($unzip_dir, $zip_from_dir, $path='') {
 	logThis('Starting file copy process...', $path);
 	global $sugar_version;
 	$backwardModules='';
-    if(substr($sugar_version,0,1) >= 5){
+
     	$modules = getAllModules();
 			$backwardModules = array();
 			foreach($modules as $mod){
@@ -138,7 +178,6 @@ function commitCopyNewFiles($unzip_dir, $zip_from_dir, $path='') {
 			    	}
 			   }
 			}
-       }
 
 	$newFiles = findAllFiles(clean_path($unzip_dir . '/' . $zip_from_dir), array());
 	$zipPath = clean_path($unzip_dir . '/' . $zip_from_dir);
@@ -713,9 +752,8 @@ function upgradeUWFiles($file) {
     if(file_exists("$from_dir/include/utils/sugar_file_utils.php")) {
         $allFiles[] = "$from_dir/include/utils/sugar_file_utils.php";
     }
-    // users
-    if(file_exists("$from_dir/modules/Users")) {
-        $allFiles[] = findAllFiles("$from_dir/modules/Users", $allFiles);
+    if(file_exists("$from_dir/include/utils/autoloader.php")) {
+        $allFiles[] = "$from_dir/include/utils/autoloader.php";
     }
 
     upgradeUWFilesCopy($allFiles, $from_dir);
@@ -1094,7 +1132,19 @@ function checkSystemCompliance() {
         $ret['ZipStatus'] = "<b><span class=go>{$installer_mod_strings['LBL_CHECKSYS_OK']}</span></b>";
     }
 
-
+    // PCRE
+    if(defined('PCRE_VERSION')) {
+        if (version_compare(PCRE_VERSION, '7.0') < 0) {
+            $ret['pcreVersion'] = "<b><span class='stop'>{$installer_mod_strings['ERR_CHECKSYS_PCRE_VER']}</span></b>";
+            $ret['error_found'] = true;
+        }
+        else {
+            $ret['pcreVersion'] = "<b><span class='go'>{$installer_mod_strings['LBL_CHECKSYS_OK']}</span></b>";
+        }
+    } else {
+        $ret['pcreVersion'] = "<b><span class='stop'><b>{$installer_mod_strings['ERR_CHECKSYS_PCRE']}</span></b>";
+        $ret['error_found'] = true;
+    }
 
     // Suhosin allow to use upload://
     $ret['stream_msg'] = '';
@@ -1413,9 +1463,10 @@ function preLicenseCheck() {
 	global $mod_strings;
 	global $sugar_version;
 
-	if(!isset($sugar_version) || empty($sugar_version)) {
-		require_once('./sugar_version.php');
-	}
+    if (empty($sugar_version))
+    {
+        require('sugar_version.php');
+    }
 
 if(!isset($_SESSION['unzip_dir']) || empty($_SESSION['unzip_dir'])) {
 		logThis('unzipping files in upgrade archive...');
@@ -1557,9 +1608,10 @@ function preflightCheck() {
 	global $mod_strings;
 	global $sugar_version;
 
-	if(!isset($sugar_version) || empty($sugar_version)) {
-		require_once('./sugar_version.php');
-	}
+    if (empty($sugar_version))
+    {
+        require('sugar_version.php');
+    }
 
 	unset($_SESSION['rebuild_relationships']);
 	unset($_SESSION['rebuild_extensions']);
@@ -2155,8 +2207,6 @@ function resetUwSession() {
 		unset($_SESSION['alterCustomTableQueries']);
 	if(isset($_SESSION['skip_zip_upload']))
 		unset($_SESSION['skip_zip_upload']);
-	if(isset($_SESSION['sugar_version_file']))
-		unset($_SESSION['sugar_version_file']);
 	if(isset($_SESSION['install_file']))
 		unset($_SESSION['install_file']);
 	if(isset($_SESSION['unzip_dir']))
@@ -3022,6 +3072,20 @@ function upgradeUserPreferences() {
             $current_user->savePreferencesToDB();
         }
 
+        $changed = false;
+        if(!$current_user->getPreference('calendar_publish_key')) {
+        	// set publish key if not set already
+        	$current_user->setPreference('calendar_publish_key', create_guid());
+        	$changed = true;
+        }
+
+
+        // we need to force save the changes to disk, otherwise we lose them.
+        if($changed)
+        {
+            $current_user->savePreferencesToDB();
+        }
+
 	} //while
 }
 
@@ -3619,7 +3683,7 @@ function upgradeModulesForTeam() {
 			if(!empty($content['dashlets']) && !empty($content['pages'])){
 				$originalDashlets = $content['dashlets'];
 				foreach($originalDashlets as $key => $ds){
-				    if(!empty($ds['options']['url']) && stristr($ds['options']['url'],'http://www.sugarcrm.com/crm/product/gopro')){
+				    if(!empty($ds['options']['url']) && stristr($ds['options']['url'],'https://www.sugarcrm.com/crm/product/gopro')){
 						unset($originalDashlets[$key]);
 					}
 				}
@@ -3895,7 +3959,7 @@ function merge_config_si_settings($write_to_upgrade_log=false, $config_location=
 	} else {
 	   if($write_to_upgrade_log)
 	   {
-	      logThis('config.php values are in sync with config_si.php values.  Skipped merging.');
+	      logThis('config.php values are in sync with config_si.php values.  Skipped merging.', $path);
 	   }
 	   return false;
 	}
@@ -3916,6 +3980,8 @@ function merge_config_si_settings($write_to_upgrade_log=false, $config_location=
  */
 function upgrade_connectors() {
     require_once('include/connectors/utils/ConnectorUtils.php');
+    remove_linkedin_config();
+
     if(!ConnectorUtils::updateMetaDataFiles()) {
        $GLOBALS['log']->fatal('Cannot update metadata files for connectors');
     }
@@ -3925,7 +3991,77 @@ function upgrade_connectors() {
     {
         unlink('custom/modules/Connectors/metadata/connectors.php');
     }
+
+    remove_linkedin_connector();
 }
+
+/**
+ * remove_linkedin_config
+ *
+ * This function removes linkedin config from custom/modules/Connectors/metadata/display_config.php, linkedin connector is removed in 6.5.16
+ *
+ */
+function remove_linkedin_config() 
+{
+    $display_file = 'custom/modules/Connectors/metadata/display_config.php';
+
+    if (file_exists($display_file)) {
+        require($display_file);
+
+        if (!empty($modules_sources)) {
+            foreach ($modules_sources as $module => $config) {
+                if (isset($config['ext_rest_linkedin'])) {
+                    unset($modules_sources[$module]['ext_rest_linkedin']);
+                }
+            }
+            if(!write_array_to_file('modules_sources', $modules_sources, $display_file)) {
+                //Log error
+                $GLOBALS['log']->fatal("Cannot write \$modules_sources to " . $display_file);
+            }
+        }
+    }
+
+    $search_file = 'custom/modules/Connectors/metadata/searchdefs.php';
+
+    if (file_exists($search_file)) {
+        require($search_file);
+
+        if (isset($searchdefs['ext_rest_linkedin'])) {
+            unset($searchdefs['ext_rest_linkedin']);
+
+            if(!write_array_to_file('searchdefs', $searchdefs, $search_file)) {
+                //Log error
+                $GLOBALS['log']->fatal("Cannot write \$searchdefs to " . $search_file);
+            }
+        }
+    }
+}
+
+/**
+ * remove_linkedin_connector
+ *
+ * This function removes linkedin connector from upgrade, linkedin connector is removed in 6.5.16
+ *
+ */
+function remove_linkedin_connector() {
+
+    if (file_exists('modules/Connectors/connectors/formatters/ext/rest/linkedin')) {
+        deleteDirectory('modules/Connectors/connectors/formatters/ext/rest/linkedin');
+    }
+
+    if (file_exists('modules/Connectors/connectors/sources/ext/rest/linkedin')) {
+        deleteDirectory('modules/Connectors/connectors/sources/ext/rest/linkedin');
+    }
+
+    if (file_exists('custom/modules/Connectors/connectors/sources/ext/rest/linkedin')) {
+        deleteDirectory('custom/modules/Connectors/connectors/sources/ext/rest/linkedin');
+    }
+
+    if (file_exists('include/externalAPI/LinkedIn')) {
+        deleteDirectory('include/externalAPI/LinkedIn');
+    }
+}
+
 
 /**
  * Enable the InsideView connector for the four default modules.
@@ -4131,6 +4267,9 @@ function upgradeSugarCache($file)
 	if(file_exists("$from_dir/include/utils/sugar_file_utils.php")) {
 		$allFiles[] = "$from_dir/include/utils/sugar_file_utils.php";
 	}
+	if(file_exists("$from_dir/include/utils/autoloader.php")) {
+		$allFiles[] = "$from_dir/include/utils/autoloader.php";
+	}
 
 	foreach($allFiles as $k => $file) {
 		$destFile = str_replace($from_dir."/", "", $file);
@@ -4145,41 +4284,6 @@ function upgradeSugarCache($file)
         }
 	}
 }
-
-
-/**
- * upgradeDisplayedTabsAndSubpanels
- *
- * @param $version String value of current system version (pre upgrade)
- */
-function upgradeDisplayedTabsAndSubpanels($version)
-{
-	if($version < '620')
-	{
-		logThis('start upgrading system displayed tabs and subpanels');
-	    require_once('modules/MySettings/TabController.php');
-	    $tc = new TabController();
-
-	    //grab the existing system tabs
-	    $tabs = $tc->get_tabs_system();
-
-	    //add Calls, Meetings, Tasks, Notes, Prospects (Targets) and ProspectLists (Target Lists)
-	    //to displayed tabs unless explicitly set to hidden
-	    $modules_to_add = array('Calls', 'Meetings', 'Tasks', 'Notes', 'Prospects', 'ProspectLists');
-	    $added_tabs = array();
-
-	    foreach($modules_to_add as $module)
-	    {
-		       $tabs[0][$module] = $module;
-		       $added_tabs[] = $module;
-	    }
-
-	    logThis('calling set_system_tabs on TabController to add tabs: ' . var_export($added_tabs, true));
-	    $tc->set_system_tabs($tabs[0]);
-	    logThis('finish upgrading system displayed tabs and subpanels');
-	}
-}
-
 
 /**
  * unlinkUpgradeFiles
@@ -4215,26 +4319,26 @@ function unlinkUpgradeFiles($version)
        {
        		if(preg_match('/UpgradeRemoval(\d+)x\.php/', $script, $matches))
        		{
-       	   	   $checkVersion = $matches[1] + 1; //Increment by one to check everything equal or below the target version
        	   	   $upgradeClass = 'UpgradeRemoval' . $matches[1] . 'x';
        	   	   require_once($_SESSION['unzip_dir'].'/scripts/files_to_remove/' . $upgradeClass . '.php');
+               if (class_exists($upgradeClass) == false)
+               {
+                   continue;
+               }
 
-       	   	   //Check to make sure we should load and run this UpgradeRemoval instance
-       	   	   if($checkVersion <= $version && class_exists($upgradeClass))
-       	   	   {
-       	   	   	  $upgradeInstance = new $upgradeClass();
-       	   	   	  if($upgradeInstance instanceof UpgradeRemoval)
-       	   	   	  {
-       	   	   	  	  logThis('Running UpgradeRemoval instance ' . $upgradeClass);
-       	   	   	  	  logThis('Files will be backed up to custom/backup');
-	       	   	   	  $files = $upgradeInstance->getFilesToRemove($version);
-	       	   	   	  foreach($files as $file)
-	       	   	   	  {
-	       	   	   	  	 logThis($file);
-	       	   	   	  }
-	       	   	   	  $upgradeInstance->processFilesToRemove($files);
-       	   	   	  }
-       	   	   }
+                //Check to make sure we should load and run this UpgradeRemoval instance
+                $upgradeInstance = new $upgradeClass();
+                if ($upgradeInstance instanceof UpgradeRemoval && version_compare($upgradeInstance->version, $version, '<='))
+                {
+                    logThis('Running UpgradeRemoval instance ' . $upgradeClass);
+                    logThis('Files will be backed up to custom/backup');
+                    $files = $upgradeInstance->getFilesToRemove($version);
+                    foreach($files as $file)
+                    {
+                       logThis($file);
+                    }
+                    $upgradeInstance->processFilesToRemove($files);
+                }
        	    }
        }
     }

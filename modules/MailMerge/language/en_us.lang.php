@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -73,8 +73,15 @@ $mod_strings = array (
   'LBL_CONTAINS_CONTACT_INFO' => 'Selected template contains related ',
   'LBL_ADDIN_NOTICE' => 'This requires the installation of Sugar Mail Merge add-in to Microsoft Word.',
   'LBL_BROWSER_NOTICE' => 'You must be running IE 6.0 or greater to perform the actual merge.',
-	'LBL_REMOVE' => 'Remove Item(s)' /*for 508 compliance fix*/,
-	'LBL_ADD' => 'Add Item(s)' /*for 508 compliance fix*/,
+  'LBL_REMOVE' => 'Remove Item(s)' /*for 508 compliance fix*/,
+  'LBL_ADD' => 'Add Item(s)' /*for 508 compliance fix*/,
+  'LBL_BROWSER_REQUIREMENT' => 'This requires IE 6.0 or greater for Windows.',
+  'LBL_FORM_SELECT_TEMPLATE' => 'Please select a template.',
+  'LBL_SELECT_ONE' => 'Please select at least one item.',
+  'LBL_AVAILABLE' => 'Available',
+  'LBL_SELECTED' => 'Selected',
+  'LBL_RELATED_INFO_SELECTION' => 'Use the selections below to identify the related information you would like to display in your merged document. Skip this step if your template document contains no related information.',
+
 );
 
 

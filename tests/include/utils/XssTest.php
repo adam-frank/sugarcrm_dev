@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -41,6 +41,11 @@ class XssTest extends Sugar_PHPUnit_Framework_TestCase
 {
     var $email_xss;
 
+    /**
+     * @var mixed
+     */
+    protected $html_allow_objects = null;
+
     public function setUp()
     {
         global $sugar_config;
@@ -49,10 +54,16 @@ class XssTest extends Sugar_PHPUnit_Framework_TestCase
             $this->email_xss = $sugar_config['email_xss'];
             $sugar_config['email_xss'] = '';
         }
+        if(isset($GLOBALS['sugar_config']['html_allow_objects'])) {
+            $this->html_allow_objects = $GLOBALS['sugar_config']['html_allow_objects'];
+        }
+        $GLOBALS['sugar_config']['html_allow_objects'] = true;
+        SugarCleaner::$instance = null;
     }
 
     public function tearDown()
     {
+        $GLOBALS['sugar_config']['html_allow_objects'] = $this->html_allow_objects;
         if(!empty($this->email_xss))
         {
             global $sugar_config;

@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -66,7 +66,6 @@ public function testMapConnectorFields()
     $view = new ViewModifyMapping(null, null);
     $view->ss = new Sugar_Smarty();
     $view->display();
-    $this->expectOutputRegex('/ext_rest_linkedin/', 'Failed to asssert that LinkedIn connector appears');
     $this->expectOutputNotRegex('/ext_rest_insideview/', 'Failed to asssert that InsideView text does not appear');
 
 }
@@ -77,7 +76,6 @@ public function testEnableConnectors()
     $view = new ViewModifyDisplay(null, null);
     $view->ss = new Sugar_Smarty();
     $view->display();
-    $this->expectOutputRegex('/ext_rest_linkedin/', 'Failed to asssert that LinkedIn connector appears');
     $this->expectOutputRegex('/ext_rest_insideview/', 'Failed to asssert that InsideView text does not appear');
 
 }
@@ -88,7 +86,6 @@ public function testConnectorProperties()
     $view = new ViewModifyProperties(null, null);
     $view->ss = new Sugar_Smarty();
     $view->display();
-    $this->expectOutputRegex('/ext_rest_linkedin/', 'Failed to asssert that LinkedIn connector appears');
     $this->expectOutputNotRegex('/ext_rest_insideview/', 'Failed to asssert that InsideView text does not appear');
 
 }
@@ -99,7 +96,6 @@ public function testConnectorSearchProperties()
     $view = new ViewModifySearch(null, null);
     $view->ss = new Sugar_Smarty();
     $view->display();
-    $this->expectOutputNotRegex('/ext_rest_linkedin/', 'Failed to asssert that LinkedIn connector appears');
     $this->expectOutputNotRegex('/ext_rest_insideview/', 'Failed to asssert that InsideView text does not appear');
 }
 

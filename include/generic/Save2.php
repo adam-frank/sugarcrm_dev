@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -58,101 +58,6 @@ ARGS:
 
 require_once('include/formbase.php');
 
-function add_prospects_to_prospect_list($query_panel,$parent_module,$parent_type,$parent_id,$child_id,$link_attribute,$link_type, $parent)
-{
-	$GLOBALS['log']->debug('add_prospects_to_prospect_list:parameters:'.$query_panel);
-	$GLOBALS['log']->debug('add_prospects_to_prospect_list:parameters:'.$parent_module);
-	$GLOBALS['log']->debug('add_prospects_to_prospect_list:parameters:'.$parent_type);
-	$GLOBALS['log']->debug('add_prospects_to_prospect_list:parameters:'.$parent_id);
-	$GLOBALS['log']->debug('add_prospects_to_prospect_list:parameters:'.$child_id);
-	$GLOBALS['log']->debug('add_prospects_to_prospect_list:parameters:'.$link_attribute);
-	$GLOBALS['log']->debug('add_prospects_to_prospect_list:parameters:'.$link_type);
-    require_once('include/SubPanel/SubPanelTiles.php');
-
-
-	if (!class_exists($parent_type)) {
-		require_once('modules/'.cleanDirName($parent_module).'/'.cleanDirName($parent_type).'.php');
-	}
-	$focus = new $parent_type();
-	$focus->retrieve($parent_id);
-	if(empty($focus->id)) {
-	    return false;
-	}
-	if(empty($parent)) {
-	    return false;
-	}
-
-	//if link_type is default then load relationship once and add all the child ids.
-	$relationship_attribute=$link_attribute;
-
-	//find all prospects based on the query
-
-	$subpanel = new SubPanelTiles($parent, $parent->module_dir);
-    $thisPanel=$subpanel->subpanel_definitions->load_subpanel($query_panel);
-    if(empty($thisPanel)) {
-        return false;
-    }
-    $result = SugarBean::get_union_related_list($parent, '', '', '', 0, -1,-1,'', $thisPanel);
-
-    if(!empty($result['list'])) {
-        foreach($result['list'] as $object) {
-		    if ($link_type != 'default') {
-			    $relationship_attribute=strtolower($object->$link_attribute);
-		    }
-            $GLOBALS['log']->debug('add_prospects_to_prospect_list:relationship_attribute:'.$relationship_attribute);
-		    // load relationship for the first time or on change of relationship atribute.
-		    if (empty($focus->$relationship_attribute)) {
-			    $focus->load_relationship($relationship_attribute);
-		    }
-		    //add
-		    $focus->$relationship_attribute->add($object->$child_id);
-        }
-    }
-}
-
-//Link rows returned by a report to parent record.
-function save_from_report($report_id,$parent_id, $module_name, $relationship_attr_name) {
-	global $beanFiles;
-	global $beanList;
-
-	$GLOBALS['log']->debug("Save2: Linking with report output");
-	$GLOBALS['log']->debug("Save2:Report ID=".$report_id);
-	$GLOBALS['log']->debug("Save2:Parent ID=".$parent_id);
-	$GLOBALS['log']->debug("Save2:Module Name=".$module_name);
-	$GLOBALS['log']->debug("Save2:Relationship Attribute Name=".$relationship_attr_name);
-
- 	$bean_name = $beanList[$module_name];
-	$GLOBALS['log']->debug("Save2:Bean Name=".$bean_name);
-	require_once($beanFiles[$bean_name]);
- 	$focus = new $bean_name();
-
-	$focus->retrieve($parent_id);
-	$focus->load_relationship($relationship_attr_name);
-
-	//fetch report definition.
-global $current_language, $report_modules, $modules_report;
-
-$mod_strings = return_module_language($current_language,"Reports");
-
-
-	$saved = new SavedReport();
-	$saved->disable_row_level_security = true;
-	$saved->retrieve($report_id, false);
-
-	//initiailize reports engine with the report definition.
-	require_once('modules/Reports/SubpanelFromReports.php');
-	$report = new SubpanelFromReports($saved);
-	$report->run_query();
-
-	$sql = $report->query_list[0];
-	$GLOBALS['log']->debug("Save2:Report Query=".$sql);
-	$result = $report->db->query($sql);
-	while($row = $report->db->fetchByAssoc($result))
-	{
-		$focus->$relationship_attr_name->add($row['primaryid']);
-	}
-}
-
 $refreshsubpanel=true;
 if (isset($_REQUEST['return_type'])  && $_REQUEST['return_type'] == 'report') {
 	save_from_report($_REQUEST['subpanel_id'] //report_id
@@ -163,9 +68,19 @@ if (isset($_REQUEST['return_type'])  && $_REQUEST['return_type'] == 'report') {
 } else if (isset($_REQUEST['return_type'])  && $_REQUEST['return_type'] == 'addtoprospectlist') {
 
 	$GLOBALS['log']->debug(print_r($_REQUEST,true));
-	$parent = BeanFactory::getBean($_REQUEST['module'], $_REQUEST['record']);
-	add_prospects_to_prospect_list(urldecode($_REQUEST['subpanel_module_name']),$_REQUEST['parent_module'],$_REQUEST['parent_type'],$_REQUEST['subpanel_id'],
-			$_REQUEST['child_id'],$_REQUEST['link_attribute'],$_REQUEST['link_type'], $parent);
+	if(!empty($_REQUEST['prospect_list_id']) and !empty($_REQUEST['prospect_ids']))
+	{
+	    add_prospects_to_prospect_list(
+	        $_REQUEST['prospect_list_id'],
+	        $_REQUEST['prospect_ids']
+	    );
+	}
+	else
+	{
+	    $parent = BeanFactory::getBean($_REQUEST['module'], $_REQUEST['record']);
+	    add_to_prospect_list(urldecode($_REQUEST['subpanel_module_name']),$_REQUEST['parent_module'],$_REQUEST['parent_type'],$_REQUEST['subpanel_id'],
+	        $_REQUEST['child_id'],$_REQUEST['link_attribute'],$_REQUEST['link_type'], $parent);
+	}
 
 	$refreshsubpanel=false;
 }else if (isset($_REQUEST['return_type'])  && $_REQUEST['return_type'] == 'addcampaignlog') {
@@ -247,9 +162,8 @@ else {
 	            $where_clauses = '('. implode(' ) AND ( ', $where_clauses_arr) . ')';
 	        }
         }
-
-		$ret_array = create_export_query_relate_link_patch($module, $searchFields, $where_clauses);
-		$query = $seed->create_export_query($order_by, $ret_array['where'], $ret_array['join']);
+        
+        $query = $seed->create_new_list_query($order_by, $where_clauses);
 		$result = $GLOBALS['db']->query($query,true);
 		$uids = array();
 		while($val = $GLOBALS['db']->fetchByAssoc($result,false))
@@ -292,5 +206,5 @@ if ($refreshsubpanel) {
 		$inline = isset($_REQUEST['inline'])?$_REQUEST['inline']: $inline;
 		header("Location: index.php?sugar_body_only=1&module=".$_REQUEST['module']."&subpanel=".$_REQUEST['subpanel_module_name']."&action=SubPanelViewer&inline=$inline&record=".$_REQUEST['record']);
 	}
+	exit;
 }
-exit;

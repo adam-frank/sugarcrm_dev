@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -100,6 +100,8 @@ class SugarApplication
 		$server_unique_key = (isset($sugar_config['unique_key'])) ? $sugar_config['unique_key'] : '';
 		$allowed_actions = (!empty($this->controller->allowed_actions)) ? $this->controller->allowed_actions : $allowed_actions = array('Authenticate', 'Login', 'LoggedOut');
 
+        $authController = new AuthenticationController();
+        
 		if(($user_unique_key != $server_unique_key) && (!in_array($this->controller->action, $allowed_actions)) &&
 		   (!isset($_SESSION['login_error'])))
 		   {
@@ -118,13 +120,16 @@ class SugarApplication
 			        $this->controller->action = 'index';
 			    elseif($this->isModifyAction())
 			        $this->controller->action = 'index';
+                elseif ($this->controller->action == $this->default_action 
+                    && $this->controller->module == $this->default_module) {
+                    $this->controller->action = '';
+                    $this->controller->module = '';
+                }
 			}
 
-			header('Location: index.php?action=Login&module=Users'.$this->createLoginVars());
-			exit ();
+            $authController->authController->redirectToLogin($this);
 		}
 
-		$authController = new AuthenticationController((!empty($GLOBALS['sugar_config']['authenticationClass'])? $GLOBALS['sugar_config']['authenticationClass'] : 'SugarAuthenticate'));
 		$GLOBALS['current_user'] = new User();
 		if(isset($_SESSION['authenticated_user_id'])){
 			// set in modules/Users/Authenticate.php
@@ -359,10 +364,10 @@ class SugarApplication
  	function checkDatabaseVersion($dieOnFailure = true)
  	{
  	    $row_count = sugar_cache_retrieve('checkDatabaseVersion_row_count');
- 	    if ( empty($row_count) ) {
-            global $sugar_db_version;
+ 	    if ( empty($row_count) )
+ 	    {
             $version_query = "SELECT count(*) as the_count FROM config WHERE category='info' AND name='sugar_version' AND ".
-            	$GLOBALS['db']->convert('value', 'text2char')." = ".$GLOBALS['db']->quoted($sugar_db_version);
+            $GLOBALS['db']->convert('value', 'text2char')." = ".$GLOBALS['db']->quoted($GLOBALS['sugar_db_version']);
 
             $result = $GLOBALS['db']->query($version_query);
             $row = $GLOBALS['db']->fetchByAssoc($result);
@@ -370,12 +375,20 @@ class SugarApplication
             sugar_cache_put('checkDatabaseVersion_row_count', $row_count);
         }
 
-		if($row_count == 0 && empty($GLOBALS['sugar_config']['disc_client'])){
-			$sugar_version = $GLOBALS['sugar_version'];
+		if ($row_count == 0 && empty($GLOBALS['sugar_config']['disc_client']))
+		{
 			if ( $dieOnFailure )
-				sugar_die("Sugar CRM $sugar_version Files May Only Be Used With A Sugar CRM $sugar_db_version Database.");
+			{
+				$replacementStrings = array(
+					0 => $GLOBALS['sugar_version'],
+					1 => $GLOBALS['sugar_db_version'],
+				);
+				sugar_die(string_format($GLOBALS['app_strings']['ERR_DB_VERSION'], $replacementStrings));
+			}
 			else
+			{
 			    return false;
+			}
 		}
 
 		return true;
@@ -568,9 +581,7 @@ class SugarApplication
 	    if(isset($_REQUEST['MSID'])) {
 			session_id($_REQUEST['MSID']);
 			session_start();
-			if(isset($_SESSION['user_id']) && isset($_SESSION['seamless_login'])){
-				unset ($_SESSION['seamless_login']);
-			}else{
+            if(!isset($_SESSION['user_id'])){
 				if(isset($_COOKIE['PHPSESSID'])){
 	       			self::setCookie('PHPSESSID', '', time()-42000, '/');
         		}
@@ -584,8 +595,13 @@ class SugarApplication
 			}
 		}
 
+        //set the default module to either Home or specified default
+        $default_module = !empty($GLOBALS['sugar_config']['default_module'])?  $GLOBALS['sugar_config']['default_module'] : 'Home';
+
+        //set session expired message if login module and action are set to a non login default
+        //AND session id in cookie is set but super global session array is empty
 		if ( isset($_REQUEST['login_module']) && isset($_REQUEST['login_action'])
-		        && !($_REQUEST['login_module'] == 'Home' && $_REQUEST['login_action'] == 'index') ) {
+		        && !($_REQUEST['login_module'] == $default_module && $_REQUEST['login_action'] == 'index') ) {
             if ( !is_null($sessionIdCookie) && empty($_SESSION) ) {
                 self::setCookie('loginErrorMessage', 'LBL_SESSION_EXPIRED', time()+30, '/');
             }

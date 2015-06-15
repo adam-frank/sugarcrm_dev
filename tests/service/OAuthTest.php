@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -73,6 +73,7 @@ class OAuthTest extends Sugar_PHPUnit_Framework_TestCase
 	    self::$_consumer->c_key = "TESTCUSTOMER";
         self::$_consumer->c_secret = "TESTSECRET";
         self::$_consumer->save();
+        self::$_consumer->db->commit();
     }
 
     public static function tearDownAfterClass()
@@ -130,6 +131,7 @@ class OAuthTest extends Sugar_PHPUnit_Framework_TestCase
         // check token is in the right state
         $this->assertEquals(OAuthToken::REQUEST, $c_token->tstate, "Request token has wrong state");
         $verify = $c_token->authorize(array("user" => $current_user->id));
+        $c_token->db->commit();
 
         $this->oauth->setToken($token, $secret);
         $access_token_info = $this->oauth->getAccessToken($this->url."?method=oauth_access_token&oauth_verifier=$verify");
@@ -184,7 +186,9 @@ class OAuthTest extends Sugar_PHPUnit_Framework_TestCase
         $secret = $request_token_info['oauth_token_secret'];
 
         $c_token = OAuthToken::load($token);
+        $this->assertInstanceOf('OAuthToken', $c_token, 'Token not loaded');
         $verify = $c_token->authorize(array("user" => $current_user->id));
+        $c_token->db->commit();
 
         $this->oauth->setToken($token, $secret);
         $access_token_info = $this->oauth->getAccessToken($this->url."?method=oauth_access_token&oauth_verifier=$verify");

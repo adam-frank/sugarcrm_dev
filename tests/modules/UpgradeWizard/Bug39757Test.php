@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -50,7 +50,11 @@ class Bug39757Test extends Sugar_PHPUnit_Framework_TestCase
 		if ( $GLOBALS['db']->dbType != 'mysql' ) {
             $this->markTestSkipped('Only applies to MySQL');
 		}
-		$GLOBALS['current_user'] = SugarTestUserUtilities::createAnonymousUser();
+        SugarTestHelper::setUp('beanFiles');
+        SugarTestHelper::setUp('beanList');
+        SugarTestHelper::setUp('current_user');
+        SugarTestHelper::setUp('app_strings');
+        SugarTestHelper::setUp('app_list_strings');
 		$id = create_guid();
 		$sql = "INSERT INTO meetings (id, date_start, duration_hours, duration_minutes, date_end, deleted) VALUES('{$id}', '2010-10-11 23:45:00', 0, 30, '2010-10-12', 0)";
 		$GLOBALS['db']->query($sql);
@@ -61,8 +65,7 @@ class Bug39757Test extends Sugar_PHPUnit_Framework_TestCase
 	{
 	    $sql = "DELETE FROM meetings WHERE id = '{$this->_meetingId}'";
 	    $GLOBALS['db']->query($sql);
-	    SugarTestUserUtilities::removeAllCreatedAnonymousUsers();
-        unset($GLOBALS['current_user']);
+        SugarTestHelper::tearDown();
 	}
 	
 	

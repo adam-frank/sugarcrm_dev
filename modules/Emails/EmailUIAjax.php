@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -893,8 +893,13 @@ eoq;
             $metalist = $email->et->folder->getListItemsForEmailXML($_REQUEST['ieId'], $page,
             $emailSettings['showNumInList'], $sort, $direction);
             $count = $email->et->folder->getCountItems($_REQUEST['ieId']);
-            $unread = $email->et->folder->getCountUnread($_REQUEST['ieId']);
-            $out = $email->et->jsonOuput($metalist, 'Email', $count, false, $unread);
+
+            if (!empty($_REQUEST['getUnread'])) {
+                $out = $email->et->jsonOuput($metalist, 'Email', $count, false);
+            } else {
+                $unread = $email->et->folder->getCountUnread($_REQUEST['ieId']);
+                $out = $email->et->jsonOuput($metalist, 'Email', $count, false, $unread);
+            }
 
             @ob_end_clean();
             ob_start();

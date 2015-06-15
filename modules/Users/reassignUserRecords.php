@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -107,6 +107,8 @@ if(!isset($_POST['fromuser']) && !isset($_GET['execute'])){
 <select name="fromuser" id='fromuser'>
 <?php
 $all_users = User::getAllUsers();
+//Bug 48697 - We need to display only active users as possible reassign targets
+$active_users = User::getActiveUsers();
 echo get_select_options_with_id($all_users, isset($_SESSION['reassignRecords']['fromuser']) ? $_SESSION['reassignRecords']['fromuser'] : '');
 ?>
 </select>
@@ -121,7 +123,7 @@ if(isset($_SESSION['reassignRecords']['fromuser']) && isset($all_users[$_SESSION
 	unset($all_users[$_SESSION['reassignRecords']['fromuser']]);
 }
 
-echo get_select_options_with_id($all_users, isset($_SESSION['reassignRecords']['touser']) ? $_SESSION['reassignRecords']['touser'] : '');
+echo get_select_options_with_id($active_users, isset($_SESSION['reassignRecords']['touser']) ? $_SESSION['reassignRecords']['touser'] : '');
 ?>
 </select>
 <?php
@@ -157,7 +159,10 @@ if(!isset($_SESSION['reassignRecords']['assignedModuleListCache'])){
 	//Leon bug 20739
 	$beanListDupDisp=array() ;
 	foreach($beanListDup as $m => $p){
-		$beanListDupDisp[$app_list_strings['moduleList'][$m]]=$p;
+		if (isset($app_list_strings['moduleList'][$m]))
+		{
+		    $beanListDupDisp[$app_list_strings['moduleList'][$m]]=$p;
+		}
 	}
 	$_SESSION['reassignRecords']['assignedModuleListCache'] = $beanListDup;
 	$_SESSION['reassignRecords']['assignedModuleListCacheDisp'] = $beanListDupDisp;
@@ -250,7 +255,7 @@ else if(!isset($_GET['execute'])){
 	$tousername = $_POST['touser'];
 
 	$query = "select user_name, id from users where id in ('{$_POST['fromuser']}', '{$_POST['touser']}')";
-	$res = $GLOBALS['db']->query($query);
+	$res = $GLOBALS['db']->query($query, true);
 	while($row = $GLOBALS['db']->fetchByAssoc($res)){
 		if($row['id'] == $_POST['fromuser'])
 			$fromusername = $row['user_name'];
@@ -349,7 +354,7 @@ else if(!isset($_GET['execute'])){
 		$_SESSION['reassignRecords']['modules'][$module]['query'] = $query;
 		$_SESSION['reassignRecords']['modules'][$module]['update'] = $updatequery;
 
-		$res = $GLOBALS['db']->query($countquery);
+		$res = $GLOBALS['db']->query($countquery, true);
 		$row = $GLOBALS['db']->fetchByAssoc($res);
 
 		echo "{$row['count']} {$mod_strings_users['LBL_REASS_RECORDS_FROM']} {$app_list_strings['moduleList'][$p_module]} {$mod_strings_users['LBL_REASS_WILL_BE_UPDATED']}\n<BR>\n";

@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -47,6 +47,7 @@ class TemplateField{
 	var $view = 'edit';
 	var $name = '';
 	var $vname = '';
+    public $label = '';
 	var $id = '';
 	var $size = '20';
 	var $len = '255';
@@ -93,13 +94,10 @@ class TemplateField{
 		'duplicate_merge_dom_value'=>'duplicate_merge_dom_value', //bug #14897
 		'merge_filter'=>'merge_filter',
 		'reportable' => 'reportable',
-		'min'=>'ext1',
-		'max'=>'ext2',
 		'ext2'=>'ext2',
 		'ext4'=>'ext4',
-	//'disable_num_format'=>'ext3',
 	    'ext3'=>'ext3',
-		'label_value'=>'label_value',
+        'labelValue' => 'label_value',
 		'unified_search'=>'unified_search',
         'full_text_search'=>'full_text_search',
 	);
@@ -481,15 +479,13 @@ class TemplateField{
 			if(isset($_REQUEST[$vardef])){		    
                 $this->$vardef = $_REQUEST[$vardef];
 
-			    //  Bug #48826. Some fields are allowed to have special characters and must be decoded from the request
+                //  Bug #48826. Some fields are allowed to have special characters and must be decoded from the request
+                // Bug 49774, 49775: Strip html tags from 'formula' and 'dependency'.
                 if (is_string($this->$vardef) && in_array($vardef, $this->decode_from_request_fields_map))
-                  $this->$vardef = html_entity_decode($this->$vardef);
+                {
+                    $this->$vardef = html_entity_decode(strip_tags(from_html($this->$vardef)));
+                }
 
-				// Bug 49774, 49775: Strip html tags from 'formula' and 'dependency'.
-				// Add to the list below if we need to do the same for other fields.
-				if (!empty($this->$vardef) && in_array($vardef, array('formula', 'dependency'))){
-				    $this->$vardef = to_html(strip_tags(from_html($this->$vardef)));
-				}
 
                 //Remove potential xss code from help field
                 if($field == 'help' && !empty($this->$vardef))

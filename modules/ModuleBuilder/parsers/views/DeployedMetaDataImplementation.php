@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -160,7 +160,6 @@ class DeployedMetaDataImplementation extends AbstractMetaDataImplementation impl
         			$type = $module->getType () ;
 					$this->_sourceFilename = self::getFileName ( $view, $moduleName, MB_CUSTOMMETADATALOCATION ) ;
 
-					// Now we can copy the wireless view from the template
 					global $current_language;
 					$mod = return_module_language($current_language , $moduleName);
 					$loadedForWrite = $this->_loadFromPopupFile (  "include/SugarObjects/templates/$type/metadata/".basename ( $this->_sourceFilename )  , $mod, $view, true);

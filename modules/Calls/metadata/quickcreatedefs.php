@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -50,6 +50,7 @@ array (
           2 => '<input type="hidden" name="user_invitees">',
           3 => '<input type="hidden" name="lead_invitees">',
           4 => '<input type="hidden" name="contact_invitees">',
+          5 => '<input type="hidden" name="is_ajax_call" value="1">',
         ),
         'buttons' =>
         array (

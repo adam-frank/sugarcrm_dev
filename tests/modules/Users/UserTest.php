@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -139,5 +139,12 @@ class UserTest extends Sugar_PHPUnit_Framework_TestCase
             $GLOBALS['db']->getOne("SELECT category FROM user_preferences WHERE assigned_user_id = '{$this->_user->id}' AND category = 'cat2'")
             );
     }
+
+    public function testPrimaryEmailShouldBeCaseInsensitive()
+    {
+        $this->_user->email1 = 'example@example.com';
+        $this->assertTrue($this->_user->isPrimaryEmail('EXAMPLE@example.com'));
+    }
+
 }
 

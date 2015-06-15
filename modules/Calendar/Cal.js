@@ -1,6 +1,6 @@
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -55,7 +55,9 @@ function insert_empty_items(el,count,to_end){var slot=el.parentNode;for(var i=0;
 CAL.arrange_advanced=function(){var nodes=CAL.query("#cal-grid #cal-scrollable .col");for(var i=0;i<nodes.length;i++){CAL.arrange_column(nodes[i]);}
 CAL.update_dd.fire();}
 CAL.create_item=function(params){var item=params.item;var id=params.id+params.id_suffix;var el=document.createElement("div");var elHead=document.createElement("div");elHead.setAttribute("class","head");var elHeadInfo=document.createElement("div");elHeadInfo.setAttribute("class","adicon");elHeadInfo.setAttribute("id","div_"+id);var params_click=new Object();params_click.id=id;YAHOO.util.Event.on(elHeadInfo,"click",function(e){YAHOO.util.Event.stopPropagation(e);CAL.show_additional_details(params_click.id);},params_click);var head_text=document.createElement("div");head_text.innerHTML=params.head_text;elHead.appendChild(elHeadInfo);elHead.appendChild(head_text);el.appendChild(elHead);if(params.type=="advanced"){var elContent=document.createElement("div");elContent.setAttribute("class","content");if(params.content_style!=""){elContent.style[params.content_style]=params.content_style_value;}
-elContent.innerHTML=params.item_text;el.appendChild(elContent);}
+elContent.innerHTML=params.item_text;el.appendChild(elContent);var related_to=document.createElement("div");related_to.setAttribute("class","content");if(params.content_style!=""){related_to.style[params.content_style]=params.content_style_value;}
+if(params.related_to){related_to.innerHTML=params.related_to;}
+el.appendChild(related_to);}
 el.setAttribute("id",id);el.className="act_item"+" "+item.type+"_item";el.style.backgroundColor=CAL.activity_colors[item.module_name]['body'];el.style.borderColor=CAL.activity_colors[item.module_name]['border'];el.setAttribute("record",params.id);el.setAttribute("module_name",item.module_name);el.setAttribute("record",item.record);el.setAttribute("status",item.status);el.setAttribute("detail",item.detail);el.setAttribute("edit",item.edit);if(typeof item.repeat_parent_id!="undefined"&&item.repeat_parent_id!="")
 el.setAttribute("repeat_parent_id",item.repeat_parent_id);if(params.type=="basic"){el.style.left="-1px";el.style.display="block";el.setAttribute("days",params.days);el.style.width=((params.days)*100)+"%";el.style.top=parseInt(params.position*CAL.slot_height-params.slot.childNodes.length*(CAL.slot_height+1))+"px";}else{el.style.height=parseInt((CAL.slot_height+1)*params.duration_coef-1)+"px";el.setAttribute("duration_coef",params.duration_coef);}
 YAHOO.util.Event.on(el,"mouseover",function(){if(!CAL.records_openable)
@@ -86,9 +88,9 @@ dd.onDragOut=function(e,id){var slot=document.getElementById(id);YAHOO.util.Dom.
 CAL.make_resizable=function(id,slot){var pos=0,e=slot;while(e=e.previousSibling){pos++;}
 var max_height=(CAL.cells_per_day-pos)*(CAL.slot_height+1)-1;var old_width;var resize=new YAHOO.util.Resize(id,{handles:['b'],maxHeight:max_height});CAL.resize_registry[id]=resize;resize.on('startResize',function(e){var el=CAL.get(id);if(el){el.style.zIndex=3;}
 CAL.records_openable=false;CAL.disable_creating=true;});resize.on('endResize',function(e){elm_id=id;var duration=e.height /(CAL.slot_height+1)*CAL.t_step;var remainder=duration%15;if(remainder>7.5)
-remainder=(-1)*(15-remainder);duration=duration-remainder;var duration_hours=parseInt(duration / 60);var duration_minutes=duration%60;var new_size=(duration / CAL.t_step)*(CAL.slot_height+1)-1;var el=CAL.get(elm_id);if(el){el.style.zIndex='';el.style.height=new_size+"px";CAL.arrange_slot(slot.id);var nodes=CAL.query("#cal-grid div.act_item");CAL.each(nodes,function(i,v){nodes[i].style.zIndex='';});var duration_coef=duration / CAL.t_step;el.setAttribute("duration_coef",duration_coef);if(duration_coef<1.75)
-el.childNodes[1].style.display="none";else
-el.childNodes[1].style.display="";var callback={success:function(o){try{res=eval("("+o.responseText+")");}catch(err){alert(CAL.lbl_error_saving);ajaxStatus.hideStatus();return;}
+remainder=(-1)*(15-remainder);duration=duration-remainder;var duration_hours=parseInt(duration / 60);var duration_minutes=duration%60;var new_size=(duration / CAL.t_step)*(CAL.slot_height+1)-1;var el=CAL.get(elm_id);if(el){el.style.zIndex='';el.style.height=new_size+"px";CAL.arrange_slot(slot.id);var nodes=CAL.query("#cal-grid div.act_item");CAL.each(nodes,function(i,v){nodes[i].style.zIndex='';});var duration_coef=duration / CAL.t_step;el.setAttribute("duration_coef",duration_coef);if(duration_coef<1.75){el.childNodes[1].style.display="none";if(el.childNodes[2]){el.childNodes[2].style.display="none";}}
+else{el.childNodes[1].style.display="";if(el.childNodes[2]){el.childNodes[2].style.display="";}}
+var callback={success:function(o){try{res=eval("("+o.responseText+")");}catch(err){alert(CAL.lbl_error_saving);ajaxStatus.hideStatus();return;}
 if(res.access=='yes'){CAL.update_vcal();CAL.clear_additional_details(el.getAttribute("record"));CAL.arrange_column(slot.parentNode);CAL.update_dd.fire();ajaxStatus.hideStatus();CAL.disable_creating=false;CAL.records_openable=true;}}};ajaxStatus.showStatus(SUGAR.language.get('app_strings','LBL_SAVING'));var url="index.php?module=Calendar&action=Resize&sugar_body_only=true";var data={"current_module":el.getAttribute("module_name"),"record":el.getAttribute("record"),"duration_hours":duration_hours,"duration_minutes":duration_minutes};YAHOO.util.Connect.asyncRequest('POST',url,callback,CAL.toURI(data));}});}
 CAL.destroy_ui=function(id){if(CAL.items_resizable&&typeof CAL.resize_registry[id]!="undefined"){CAL.resize_registry[id].destroy();delete CAL.resize_registry[id];}
 if(CAL.items_draggable&&typeof CAL.dd_registry[id]!="undefined")
@@ -123,13 +125,14 @@ CAL.basic.remove(item);if(CAL.style=="basic"||item.days>1){CAL.basic.add(item);r
 var head_text=CAL.get_header_text(item.type,item.time_start,item.name,item.record);var time_cell=item.timestamp-item.timestamp%(CAL.t_step*60);var duration_coef;if(item.module_name=='Tasks'){duration_coef=1;}else{if((item.duration_minutes<CAL.t_step)&&(item.duration_hours==0))
 duration_coef=1;else
 duration_coef=(parseInt(item.duration_hours)*60+parseInt(item.duration_minutes))/ CAL.t_step;}
-var item_text=SUGAR.language.languages.app_list_strings[item.type+'_status_dom'][item.status];var content_style="";var content_style_value="";if(duration_coef<1.75){content_style="display";content_style_value="none";}
-var elm_id=item.record+id_suffix;var el=CAL.create_item({item:item,type:'advanced',head_text:head_text,duration_coef:duration_coef,id:item.record,id_suffix:id_suffix,item_text:item_text,content_style:content_style,content_style_value:content_style_value});YAHOO.util.Event.on(el,"click",function(){if(this.getAttribute('detail')=="1")
+var item_text=SUGAR.language.languages.app_list_strings[item.type+'_status_dom'][item.status];var related_to=item.related_to;var content_style="";var content_style_value="";if(duration_coef<1.75){content_style="display";content_style_value="none";}
+var elm_id=item.record+id_suffix;var el=CAL.create_item({item:item,type:'advanced',head_text:head_text,duration_coef:duration_coef,id:item.record,id_suffix:id_suffix,item_text:item_text,content_style:content_style,content_style_value:content_style_value,related_to:related_to});YAHOO.util.Event.on(el,"click",function(){if(this.getAttribute('detail')=="1")
 CAL.load_form(this.getAttribute('module_name'),this.getAttribute('record'),false);});var slot;if(slot=CAL.get("t_"+time_cell+suffix)){slot.appendChild(el);if(item.edit==1){if(CAL.items_draggable)
 CAL.make_draggable(elm_id,"advanced");if(item.module_name!="Tasks"&&CAL.items_resizable)
 CAL.make_resizable(elm_id,slot);}
-CAL.cut_record(item.record+id_suffix);}}
-CAL.get_header_text=function(type,time_start,text,record){var start_text="<span class='start_time'>"+time_start+"</span> "+text;return start_text;}
+CAL.cut_record(item.record+id_suffix);if(CAL.view=="shared"){var end_time=$("#"+slot.id).parents("div:first").children("div:last").attr("time");var end_time_id=$("#"+slot.id).parents("div:first").children("div:last").attr("id");if(end_time&&end_time_id){var end_timestamp=parseInt(end_time_id.match(/t_([0-9]+)_.*/)[1])+1800;var share_coef=(end_timestamp-parseInt(item.timestamp))/ 1800;if(share_coef<duration_coef)
+el.style.height=parseInt((CAL.slot_height+1)*share_coef-1)+"px";}}}}
+CAL.get_header_text=function(type,time_start,text,record){var start_text=(CAL.view=='month')?("<span class='start_time'>"+time_start+"</span> "+text):text;return start_text;}
 CAL.cut_record=function(id){var el=CAL.get(id);if(!el)
 return;var duration_coef=el.getAttribute("duration_coef");real_celcount=CAL.cells_per_day;var celpos=0;var s=el.parentNode;while(s.previousSibling){celpos++;s=s.previousSibling;}
 celpos=celpos+1;if(real_celcount-celpos-duration_coef<0)
@@ -213,7 +216,10 @@ CAL.full_form=function(){var e=document.createElement('input');e.setAttribute('t
 CAL.disable_buttons=function(){CAL.get("btn-save").setAttribute("disabled","disabled");CAL.get("btn-send-invites").setAttribute("disabled","disabled");CAL.get("btn-delete").setAttribute("disabled","disabled");CAL.get("btn-full-form").setAttribute("disabled","disabled");if(CAL.enable_repeat){CAL.get("btn-edit-all-recurrences").setAttribute("disabled","disabled");CAL.get("btn-remove-all-recurrences").setAttribute("disabled","disabled");}}
 CAL.enable_buttons=function(){CAL.get("btn-save").removeAttribute("disabled");CAL.get("btn-send-invites").removeAttribute("disabled");if(CAL.get("record").value!="")
 CAL.get("btn-delete").removeAttribute("disabled");CAL.get("btn-full-form").removeAttribute("disabled");if(CAL.enable_repeat){CAL.get("btn-edit-all-recurrences").removeAttribute("disabled");CAL.get("btn-remove-all-recurrences").removeAttribute("disabled");}}
-CAL.dialog_create=function(cell){var e,user_id,user_name;CAL.get("title-cal-edit").innerHTML=CAL.lbl_loading;CAL.open_edit_dialog();CAL.disable_buttons();var module_name=CAL.get("current_module").value;if(CAL.view=='shared'){user_name=cell.parentNode.parentNode.parentNode.parentNode.parentNode.getAttribute("user_name");user_id=cell.parentNode.parentNode.parentNode.parentNode.parentNode.getAttribute("user_id");CAL.GR_update_user(user_id);}else{user_id=CAL.current_user_id;user_name=CAL.current_user_name;CAL.GR_update_user(CAL.current_user_id);}
+CAL.dialog_create=function(cell){var e,user_id,user_name;CAL.get("title-cal-edit").innerHTML=CAL.lbl_loading;CAL.open_edit_dialog();CAL.disable_buttons();var module_name=CAL.get("current_module").value;if(CAL.view=='shared'){parentWithUserValues=$('div[user_id][user_name]');user_name=parentWithUserValues.attr('user_name');user_id=parentWithUserValues.attr('user_id');if(parentWithUserValues.length>1){var theUserName,theUserId;var theUser=cell.parentNode;while(theUser){if(theUser.getAttribute("user_name")&&theUser.getAttribute("user_id")){theUserName=theUser.getAttribute("user_name");theUserId=theUser.getAttribute("user_id");break;}
+else{theUser=theUser.parentNode;}}
+if(theUserName&&theUserId){user_name=theUserName;user_id=theUserId;}}
+CAL.GR_update_user(user_id);}else{user_id=CAL.current_user_id;user_name=CAL.current_user_name;CAL.GR_update_user(CAL.current_user_id);}
 var params={'module_name':module_name,'user_id':user_id,'user_name':user_name,'date_start':cell.getAttribute("datetime")};CAL.current_params=params;CAL.load_create_form(CAL.current_params);}
 CAL.dialog_save=function(){CAL.disable_buttons();ajaxStatus.showStatus(SUGAR.language.get('app_strings','LBL_SAVING'));if(CAL.get("send_invites").value=="1"){CAL.get("title-cal-edit").innerHTML=CAL.lbl_sending;}else{CAL.get("title-cal-edit").innerHTML=CAL.lbl_saving;}
 CAL.fill_invitees();CAL.fill_repeat_data();var callback={success:function(o){try{res=eval("("+o.responseText+")");}catch(err){alert(CAL.lbl_error_saving);CAL.editDialog.cancel();ajaxStatus.hideStatus();return;}
@@ -257,12 +263,15 @@ CAL.update_vcal=function(){var v=CAL.current_user_id;var callback={success:funct
 if(typeof GLOBAL_REGISTRY.freebusy_adjusted=='undefined'){GLOBAL_REGISTRY.freebusy_adjusted=new Object();}
 GLOBAL_REGISTRY.freebusy[v]=SugarVCalClient.parseResults(result.responseText,false);GLOBAL_REGISTRY.freebusy_adjusted[v]=SugarVCalClient.parseResults(result.responseText,true);SugarWidgetScheduler.update_time();}};var url="vcal_server.php?type=vfb&source=outlook&user_id="+v;YAHOO.util.Connect.asyncRequest('GET',url,callback,false);}
 CAL.fit_grid=function(control_call){if(CAL.view=='year'){return;}
-var day_width;var cal_width=document.getElementById("cal-width-helper").offsetWidth;if(CAL.print){if(CAL.view=="day")
-cal_width=720;else
-cal_width=800;}
-var left_width=80;if(CAL.style=="basic"){if(CAL.view!="month"){left_width=20;}else
-left_width=60;}
-if(CAL.view=="day"){day_width=parseInt((cal_width-left_width-10));if(typeof control_call=="undefined"||!control_call){setTimeout(function(){CAL.fit_grid(true);setTimeout(function(){CAL.fit_grid(true);},100);},100);}}else{day_width=parseInt((cal_width-left_width)/ 7);}
-var nodes=CAL.query("#cal-grid div.col");CAL.each(nodes,function(i,v){nodes[i].style.width=day_width+"px";});var nodes=CAL.query("#cal-grid .cal-basic .act_item");CAL.each(nodes,function(i,v){var days=nodes[i].getAttribute('days');nodes[i].style.width=(day_width*days-1)+"px";});document.getElementById("cal-grid").style.visibility="";}
-YAHOO.util.DDCAL=function(id,sGroup,config){this.cont=config.cont;YAHOO.util.DDCAL.superclass.constructor.apply(this,arguments);}
+var container_width=document.getElementById("cal-width-helper").offsetWidth;var left_column_width=53;var scroll_padding=0;if(CAL.print){if(CAL.view=="day")
+container_width=720;else
+container_width=800;}
+else{var is_scrollable=document.getElementById("cal-scrollable");if(is_scrollable){scroll_padding=30;}}
+var data_width=container_width-left_column_width-scroll_padding;var num_columns;if(CAL.view=="day"){num_columns=1;if(typeof control_call=="undefined"||!control_call){setTimeout(function(){CAL.fit_grid(true);setTimeout(function(){CAL.fit_grid(true);},100);},100);}}else{num_columns=7;}
+var columns_width=CAL.calculate_columns_width(data_width,num_columns);var cell_nodes=CAL.query("#cal-grid div.col");CAL.each(cell_nodes,function(i)
+{cell_nodes[i].style.width=columns_width[i%num_columns]+"px";});document.getElementById("cal-grid").style.visibility="";};CAL.calculate_columns_width=function(width,count)
+{var result=[];var integer=Math.floor(width / count);var remainder=width-count*integer;var dispensed=0;for(var i=1,value;i<=count;i++)
+{value=integer;if(dispensed*count<i*remainder){value++;dispensed++;}
+result.push(value);}
+return result;};YAHOO.util.DDCAL=function(id,sGroup,config){this.cont=config.cont;YAHOO.util.DDCAL.superclass.constructor.apply(this,arguments);}
 YAHOO.extend(YAHOO.util.DDCAL,YAHOO.util.DD,{cont:null,init:function(){YAHOO.util.DDCAL.superclass.init.apply(this,arguments);this.initConstraints();CAL.update_dd.subscribe(function(type,args,dd){dd.resetConstraints();dd.initConstraints();},this);},initConstraints:function(){var region=YAHOO.util.Dom.getRegion(this.cont);var el=this.getEl();var xy=YAHOO.util.Dom.getXY(el);var width=parseInt(YAHOO.util.Dom.getStyle(el,'width'),10);var height=parseInt(YAHOO.util.Dom.getStyle(el,'height'),10);var left=xy[0]-region.left;var right=region.right-xy[0]-width;var top=xy[1]-region.top;var bottom=region.bottom-xy[1]-height;if(xy){this.setXConstraint(left,right);this.setYConstraint(top,bottom);}}});CAL.remove_edit_dialog();var cal_loaded=true;

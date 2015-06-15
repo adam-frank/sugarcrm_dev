@@ -2,7 +2,7 @@
 
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -777,7 +777,8 @@ if($upgradeType == constant('DCE_INSTANCE')){
 
 //Also set the tracker settings if  flavor conversion ce->pro or ce->ent
 if(isset($_SESSION['current_db_version']) && isset($_SESSION['target_db_version'])){
-	if($_SESSION['current_db_version'] == $_SESSION['target_db_version']){
+    if (version_compare($_SESSION['current_db_version'], $_SESSION['target_db_version'], '='))
+    {
 	    $_REQUEST['upgradeWizard'] = true;
 	    ob_start();
 		include('include/Smarty/internals/core.write_file.php');

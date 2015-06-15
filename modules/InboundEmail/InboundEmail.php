@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -135,7 +135,6 @@ class InboundEmail extends SugarBean {
 	var $new_schema					= true;
 	var $process_save_dates 			= true;
 	var $order_by;
-	var $db;
 	var $dbManager;
 	var $field_defs;
 	var $column_fields;
@@ -636,8 +635,15 @@ class InboundEmail extends SugarBean {
 		}
 
 		$sort = (empty($sort)) ? $this->defaultSort : $sort;
-		$direction = (empty($direction)) ? $this->defaultDirection : $direction;
-		$order = " ORDER BY {$this->hrSortLocal[$sort]} {$direction}";
+        if (!in_array(strtolower($direction), array('asc', 'desc'))) {
+            $direction = $this->defaultDirection;
+        }
+
+        if (!empty($this->hrSortLocal[$sort])) {
+            $order = " ORDER BY {$this->hrSortLocal[$sort]} {$direction}";
+        } else {
+            $order = "";
+        }
 
 		$q = "SELECT * FROM email_cache WHERE ie_id = '{$this->id}' AND mbox = '{$mbox}' {$order}";
 
@@ -2423,11 +2429,18 @@ class InboundEmail extends SugarBean {
 			$alerts = '';
 			$GLOBALS['log']->debug($l.': I-E testing string: '.$serviceTest);
 
-			// open the connection and try the test string
-			$this->conn = imap_open($serviceTest, $login, $passw);
+            // open the connection and try the test string
+            $this->conn = $this->getImapConnection($serviceTest, $login, $passw);
 
 			if(($errors = imap_last_error()) || ($alerts = imap_alerts())) {
-				if($errors == 'Too many login failures' || $errors == '[CLOSED] IMAP connection broken (server response)') { // login failure means don't bother trying the rest
+                // login failure means don't bother trying the rest
+                if ($errors == 'Too many login failures'
+                    || $errors == '[CLOSED] IMAP connection broken (server response)'
+                    // @link http://tools.ietf.org/html/rfc5530#section-3
+                    || strpos($errors, '[AUTHENTICATIONFAILED]') !== false
+                    // MS Exchange 2010
+                    || (strpos($errors, 'AUTHENTICATE') !== false && strpos($errors, 'failed') !== false)
+                ) {
 					$GLOBALS['log']->debug($l.': I-E failed using ['.$serviceTest.']');
 					$retArray['err'][$k] = $mod_strings['ERR_BAD_LOGIN_PASSWORD'];
 					$retArray['bad'][$k] = $serviceTest;
@@ -2788,6 +2801,15 @@ class InboundEmail extends SugarBean {
 			} // if
 			if($contactIds = $this->getRelatedId($contactAddr, 'contacts')) {
 				if(!empty($contactIds) && $c->load_relationship('contacts')) {
+                    if (!$accountIds && count($contactIds) == 1) {
+                        $contact = BeanFactory::getBean('Contacts', $contactIds[0]);
+                        if ($contact->load_relationship('accounts')) {
+                            $acct = $contact->accounts->get();
+                            if ($c->load_relationship('accounts') && !empty($acct[0])) {
+                                $c->accounts->add($acct[0]);
+                            }
+                        }
+                    }
 					$c->contacts->add($contactIds);
 				} // if
 			} // if
@@ -3524,7 +3546,7 @@ class InboundEmail extends SugarBean {
 	{
 	   $result = "";
 
-	   foreach ($part->dparamaters as $k => $v)
+	   foreach ($part->dparameters as $k => $v)
 	   {
 	       if( strtolower($v->attribute) == 'filename')
 	       {
@@ -4455,11 +4477,14 @@ eoq;
 		return $ret;
 	}
 
-	/**
-	 * for mailboxes of type "Support" parse for '[CASE:%1]'
-	 * @param	$emailName		the subject line of the email
-	 * @param	$aCase			a Case object
-	 */
+    /**
+     * For mailboxes of type "Support" parse for '[CASE:%1]'
+     *
+     * @param string $emailName The subject line of the email
+     * @param aCase  $aCase     A Case object
+     *
+     * @return string|boolean   Case ID or FALSE if not found
+     */
 	function getCaseIdFromCaseNumber($emailName, $aCase) {
 		//$emailSubjectMacro
 		$exMacro = explode('%1', $aCase->getEmailSubjectMacro());
@@ -4472,19 +4497,23 @@ eoq;
 			// $sub2 is XX] xxxxxxxxxxxxxx
 			$sub3 = substr($sub2, 0, strpos($sub2, $close));
 
-            // filter out deleted records in order to create a new case
-            // if email is related to deleted one (bug #49840)
-            $r = $this->db->query("SELECT id FROM cases WHERE case_number = '{$sub3}' and deleted = 0", true);
-			$a = $this->db->fetchByAssoc($r);
-			if(!empty($a['id'])) {
-				return $a['id'];
-			} else {
-				return false;
-			}
-		} else {
-			return false;
-		}
-	}
+            // case number is supposed to be numeric
+            if (ctype_digit($sub3)) {
+                // filter out deleted records in order to create a new case
+                // if email is related to deleted one (bug #49840)
+                $query = 'SELECT id FROM cases WHERE case_number = '
+                    . $this->db->quoted($sub3)
+                    . ' and deleted = 0';
+                $r = $this->db->query($query, true);
+                $a = $this->db->fetchByAssoc($r);
+                if (!empty($a['id'])) {
+                    return $a['id'];
+                }
+            }
+        }
+
+        return false;
+    }
 
 	function get_stored_options($option_name,$default_value=null,$stored_options=null) {
 		if (empty($stored_options)) {
@@ -4514,17 +4543,17 @@ eoq;
 				if (!empty($emailAddressString)) {
 					$emailAddressString .= ",";
 				}
-				$emailAddressString .= 	"'" . $emailAddress. "'";
+				$emailAddressString .= $this->db->quoted(trim($emailAddress));
 			} // foreach
 			$email = $emailAddressString;
 		} else {
-			$email = "'" . $email . "'";
+			$email = $this->db->quoted($email);
 		} // else
-		$module = ucfirst($module);
+		$module = $this->db->quoted(ucfirst($module));
 
 		$q = "SELECT bean_id FROM email_addr_bean_rel eabr
 				JOIN email_addresses ea ON (eabr.email_address_id = ea.id)
-				WHERE bean_module = '{$module}' AND ea.email_address_caps in ( {$email} ) AND eabr.deleted=0";
+				WHERE bean_module = $module AND ea.email_address_caps in ( {$email} ) AND eabr.deleted=0";
 
 		$r = $this->db->query($q, true);
 
@@ -4648,12 +4677,12 @@ eoq;
 
 		// final test
 		if(!is_resource($this->conn) && !$test) {
-			$this->conn = imap_open($connectString, $this->email_user, $this->email_password, CL_EXPUNGE);
+            $this->conn = $this->getImapConnection($connectString, $this->email_user, $this->email_password, CL_EXPUNGE);
 		}
 
 		if($test) {
 			if ($opts == false && !is_resource($this->conn)) {
-				$this->conn = imap_open($connectString, $this->email_user, $this->email_password, CL_EXPUNGE);
+                $this->conn = $this->getImapConnection($connectString, $this->email_user, $this->email_password, CL_EXPUNGE);
 			}
 			$errors = '';
 			$alerts = '';
@@ -4707,8 +4736,10 @@ eoq;
 			imap_close($this->conn);
 			return $msg;
 		} elseif(!is_resource($this->conn)) {
+            $GLOBALS['log']->info('Couldn\'t connect to mail server id: ' . $this->id);
 			return "false";
 		} else {
+            $GLOBALS['log']->info('Connected to mail server id: ' . $this->id);
 			return "true";
 		}
 	}
@@ -4737,6 +4768,42 @@ eoq;
 			<br>';
 		}
 	}
+
+    /**
+     * Attempt to create an IMAP connection using passed in parameters
+     * return either the connection resource or false if unable to connect
+     *
+     * @param  string  $mailbox  Mailbox to be used to create imap connection
+     * @param  string  $username The user name
+     * @param  string  $password The password associated with the username
+     * @param  integer $options  Bitmask for options parameter to the imap_open function
+     *
+     * @return resource|boolean  Connection resource on success, FALSE on failure
+     */
+    protected function getImapConnection($mailbox, $username, $password, $options = 0)
+    {
+        // if php is prior to 5.3.2, then return call without disable parameters as they are not supported yet
+        if (version_compare(phpversion(), '5.3.2', '<')) {
+            return imap_open($mailbox, $username, $password, $options);
+        }
+
+        $connection = null;
+        $authenticators = array('', 'GSSAPI', 'NTLM');
+
+        while (!$connection && ($authenticator = array_shift($authenticators)) !== null) {
+            if ($authenticator) {
+                $params = array(
+                    'DISABLE_AUTHENTICATOR' => $authenticator,
+                );
+            } else {
+                $params = array();
+            }
+
+            $connection = imap_open($mailbox, $username, $password, $options, 0, $params);
+        }
+
+        return $connection;
+    }
 
 	/**
 	 * retrieves an array of I-E beans based on the group_id
@@ -6322,6 +6389,82 @@ eoq;
         return $result;
     }
 
+    /**
+     * Import new messages from given account.
+     */
+    public function importMessages()
+    {
+        $protocol = $this->isPop3Protocol() ? 'pop3' : 'imap';
+        switch ($protocol) {
+            case 'pop3':
+                $this->importMailboxMessages($protocol);
+                break;
+            case 'imap':
+                $mailboxes = $this->getMailboxes(true);
+                foreach ($mailboxes as $mailbox) {
+                    $this->importMailboxMessages($protocol, $mailbox);
+                }
+                imap_expunge($this->conn);
+                imap_close($this->conn);
+                break;
+        }
+    }
+
+    /**
+     * Import messages from specified mailbox
+     *
+     * @param string      $protocol Mailing protocol
+     * @param string|null $mailbox  Mailbox (if applied to protocol)
+     */
+    protected function importMailboxMessages($protocol, $mailbox = null)
+    {
+        switch ($protocol) {
+            case 'pop3':
+                $msgNumbers = $this->getPop3NewMessagesToDownload();
+                break;
+            case 'imap':
+                $this->mailbox = $mailbox;
+                $this->connectMailserver();
+                $msgNumbers = $this->getNewMessageIds();
+                if (!$msgNumbers) {
+                    $msgNumbers = array();
+                }
+                break;
+            default:
+                $msgNumbers = array();
+                break;
+        }
+
+        foreach ($msgNumbers as $msgNumber) {
+            $uid = $this->getMessageUID($msgNumber, $protocol);
+            $GLOBALS['log']->info('Importing message no: ' . $msgNumber);
+            $this->importOneEmail($msgNumber, $uid, false, false);
+        }
+    }
+
+    /**
+     * Retrieves message UID by it's number
+     *
+     * @param int     $msgNumber Number of the message in current sequence
+     * @param string  $protocol  Mailing protocol
+     * @return string
+     */
+    protected function getMessageUID($msgNumber, $protocol)
+    {
+        switch ($protocol) {
+            case 'pop3':
+                $uid = $this->getUIDLForMessage($msgNumber);
+                break;
+            case 'imap':
+                $uid = imap_uid($this->conn, $msgNumber);
+                break;
+            default:
+                $uid = null;
+                break;
+        }
+
+        return $uid;
+    }
 } // end class definition
 
 

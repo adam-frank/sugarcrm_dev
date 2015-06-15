@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -45,14 +45,10 @@ if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 require_once('modules/Users/Forms.php');
 require_once('modules/Configurator/Configurator.php');
 
-/**
- * ViewWireless_Login extends SugarWirelessView and is the login view.
- */
 class ViewWizard extends SugarView
 {
 	/**
-	 * Constructor for the view, it runs the constructor of SugarWirelessView and
-	 * sets the footer option to true (it is off in the SugarWirelessView constructor)
+	 * Constructor.
 	 */
 	public function __construct()
 	{

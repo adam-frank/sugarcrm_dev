@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -41,7 +41,7 @@ class CheckPHPVersionTest extends Sugar_PHPUnit_Framework_TestCase
     {
         return array(
             array('4.2.1',-1,'Invalid version below min check failed.'),
-            array('5.2.1',1,'Minimum valid version check failed.'),
+            array('5.2.2',1,'Minimum valid version check failed.'),
             array('5.2.7',-1,'Unsupported version check failed.'),
             array('5.2.0-rh',1,'Unsupported custom version check failed as invalid'),
             array('5.2.0-gentoo',-1,'Unsupported custom version check failed as invalid'),

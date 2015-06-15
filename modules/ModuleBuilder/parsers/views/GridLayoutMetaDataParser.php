@@ -3,7 +3,7 @@ if (! defined ( 'sugarEntry' ) || ! sugarEntry)
     die ( 'Not A Valid Entry Point' ) ;
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -618,16 +618,16 @@ class GridLayoutMetaDataParser extends AbstractMetaDataParser implements MetaDat
                 {
                 	if ($fieldname == null )
                 	   continue;
-                    
                     //Backwards compatibility and a safeguard against multiple calls to _convertToCanonicalForm
-                	   if(is_array($fieldname))
+                    if(is_array($fieldname))
                     {
+
                     	$newRow [ $colID - $offset ] = $fieldname;
                     	continue;
                     }else if(!isset($fielddefs[$fieldname])){
                        continue;
                      }
-                	
+
                 	//Replace (filler) with the empty string
                 	if ($fieldname == $this->FILLER[ 'name' ]) {
                         $newRow [ $colID - $offset ] = '' ;
@@ -788,11 +788,6 @@ class GridLayoutMetaDataParser extends AbstractMetaDataParser implements MetaDat
         {       
 	        foreach ( $panels as $rows) {
 	            foreach ($rows as $fields) {
-	            	//wireless layouts have one less level of depth
-	                if (is_array($fields) && isset($fields['name'])) {
-	                	$ret[$fields['name']] = $fields;  
-	                	continue;
-	                }
 	                if (!is_array($fields)) {
 	                	$ret[$fields] = $fields;
 	                	continue;

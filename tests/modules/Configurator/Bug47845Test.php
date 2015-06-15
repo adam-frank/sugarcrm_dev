@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -66,13 +66,6 @@ public function testMailMergeAvailability()
 
 
     $this->expectOutputNotRegex('/system_mailmerge_on/');
-}
-
-
-public function testImportMapLinkedInPHPFileExists()
-{
-
-    $this->assertFalse(file_exists('modules/Import/maps/ImportMapLinkedin.php'), 'Assert that ImportMapLinkedin.php file does not exist for com flavor');
 }
 
 }

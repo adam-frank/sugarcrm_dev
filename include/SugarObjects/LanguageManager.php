@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -176,8 +176,8 @@ class LanguageManager
 		$lang_paths = array(
 					'modules/'.$module.'/language/'.$lang.'.lang.php',
 					'modules/'.$module.'/language/'.$lang.'.lang.override.php',
-					'custom/modules/'.$module.'/Ext/Language/'.$lang.'.lang.ext.php',
 					'custom/modules/'.$module.'/language/'.$lang.'.lang.php',
+					'custom/modules/'.$module.'/Ext/Language/'.$lang.'.lang.ext.php',
 				 );
 
 		#27023, if this module template language file was not attached , get the template from this module vardef cache file if exsits and load the template language files.

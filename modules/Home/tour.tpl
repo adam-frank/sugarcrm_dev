@@ -1,7 +1,7 @@
 {*
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -60,6 +60,13 @@
 			<div style="float: left; width: 300px;" >
 				{$mod.LBL_TOUR_FEATURES}
 				<p>{$mod.LBL_TOUR_VISIT} <a href="javascript:void window.open('http://support.sugarcrm.com/02_Documentation/01_Sugar_Editions/{$APP.documentation.$sugarFlavor}')">{$mod.LNK_TOUR_DOCUMENTATION}</a>.</p>
+
+                {if $view_calendar_url}
+                <div style="border-top: 1px solid #F5F5F5;padding-top: 3px;" >
+                    <p>{$view_calendar_url}</p>
+                </div>
+                {/if}
+
 			</div>
 		</div>
 	</div>

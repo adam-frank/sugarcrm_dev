@@ -1,7 +1,7 @@
 <?php
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -49,15 +49,18 @@ class RESTAPI3Test extends Sugar_PHPUnit_Framework_TestCase
 
     private $_unified_search_modules_content;
 
+    public static function setUpBeforeClass() {
+        if(isset($_SESSION['ACL'])) {
+        }
+        SugarTestHelper::setUp('beanFiles');
+        SugarTestHelper::setUp('beanList');
+        SugarTestHelper::setUp('app_strings');
+        SugarTestHelper::setUp('app_list_strings');
+        SugarTestHelper::setUp('mod_strings', array('Accounts'));
+    }
+
     public function setUp()
     {
-        global $beanList, $beanFiles;
-        include('include/modules.php');
-
-        //Reload langauge strings
-        $GLOBALS['app_strings'] = return_application_language($GLOBALS['current_language']);
-        $GLOBALS['app_list_strings'] = return_app_list_strings_language($GLOBALS['current_language']);
-        $GLOBALS['mod_strings'] = return_module_language($GLOBALS['current_language'], 'Accounts');
         //Create an anonymous user for login purposes/
         $this->_user = SugarTestUserUtilities::createAnonymousUser();
         $GLOBALS['current_user'] = $this->_user;
@@ -89,9 +92,6 @@ class RESTAPI3Test extends Sugar_PHPUnit_Framework_TestCase
 	{
 	    if(isset($GLOBALS['listViewDefs'])) unset($GLOBALS['listViewDefs']);
 	    if(isset($GLOBALS['viewdefs'])) unset($GLOBALS['viewdefs']);
-	    unset($GLOBALS['app_list_strings']);
-	    unset($GLOBALS['app_strings']);
-	    unset($GLOBALS['mod_strings']);
 
         if(!empty($this->unified_search_modules_content))
         {
@@ -105,7 +105,12 @@ class RESTAPI3Test extends Sugar_PHPUnit_Framework_TestCase
         $GLOBALS['db']->query("DELETE FROM tasks WHERE name like 'UNIT TEST%' ");
         $GLOBALS['db']->query("DELETE FROM meetings WHERE name like 'UNIT TEST%' ");
         SugarTestUserUtilities::removeAllCreatedAnonymousUsers();
+        unset($GLOBALS['reload_vardefs']);
 	}
+
+    public static function tearDownAfterClass() {
+        SugarTestHelper::tearDown();
+    }
 
     protected function _makeRESTCall($method,$parameters)
     {
@@ -417,11 +422,6 @@ class RESTAPI3Test extends Sugar_PHPUnit_Framework_TestCase
 
         $sh = new SugarWebServiceUtilv3();
 
-        $mobileResult = $this->_makeRESTCall('get_available_modules', array('session' => $session, 'filter' => 'mobile' ));
-        $mobileResultExpected = $sh->get_visible_mobile_modules($fullResult['modules']);
-        $mobileResultExpected = md5(serialize(array('modules' => $mobileResultExpected)));
-        $mobileResult = md5(serialize($mobileResult));
-        $this->assertEquals($mobileResultExpected, $mobileResult, "Unable to get all visible mobile modules");
 
         $defaultResult = $this->_makeRESTCall('get_available_modules', array('session' => $session, 'filter' => 'default' ));
         $defaultResult = md5(serialize($defaultResult['modules']));
@@ -450,7 +450,6 @@ class RESTAPI3Test extends Sugar_PHPUnit_Framework_TestCase
         //Test a fake module
         $result = $this->_makeRESTCall('get_module_fields_md5', array('session' => $session, 'module' => 'BadModule' ));
         $this->assertEquals('Module Does Not Exist', $result['name']);
-        unset($GLOBALS['reload_vardefs']);
     }
 
     public function testAddNewAccountAndThenDeleteIt()
@@ -721,11 +720,6 @@ class RESTAPI3Test extends Sugar_PHPUnit_Framework_TestCase
             array(
                 'module' => 'Contacts',
                 'type' => 'default',
-                'view' => 'subpanel',
-            ),
-            array(
-                'module' => 'Leads',
-                'type' => 'wireless',
                 'view' => 'subpanel',
             ),
         );

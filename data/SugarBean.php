@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -73,7 +73,14 @@ class SugarBean
      */
     var $db;
 
-	/**
+    /**
+     * Unique object identifier
+     *
+     * @var string
+     */
+    public $id;
+
+    /**
 	 * When createing a bean, you can specify a value in the id column as
 	 * long as that value is unique.  During save, if the system finds an
 	 * id, it assumes it is an update.  Setting new_with_id to true will
@@ -218,6 +225,7 @@ class SugarBean
     var $relationship_fields = array();
     var $current_notify_user;
     var $fetched_row=false;
+    var $fetched_rel_row = array();
     var $layout_def;
     var $force_load_details = false;
     var $optimistic_lock = false;
@@ -270,12 +278,25 @@ class SugarBean
      * @var array
      */
     protected $loaded_relationships = array();
-	
+
 	/**
      * set to true if dependent fields updated
      */
     protected $is_updated_dependent_fields = false;
-	
+
+    /**
+     * Blowfish encryption key
+     * @var string
+     */
+    static protected $field_key;
+
+    /**
+     * Cache of fields which can contain files
+     *
+     * @var array
+     */
+    static protected $fileFields = array();
+
     /**
      * Constructor for the bean, it performs following tasks:
      *
@@ -391,7 +412,7 @@ class SugarBean
      * Before calling this function, check whether audit has been enabled for the table/module or not.
      * You would set the audit flag in the implemting module's vardef file.
      *
-     * @return an array of
+     * @return array
      * @see is_AuditEnabled
      *
      * Internal function, do not override.
@@ -465,11 +486,11 @@ class SugarBean
      *
      * Internal function, do not override.
      */
-    public function get_custom_table_name() 
-    { 
-        return $this->getTableName().'_cstm'; 
+    public function get_custom_table_name()
+    {
+        return $this->getTableName().'_cstm';
     }
-    
+
     /**
      * If auditing is enabled, create the audit table.
      *
@@ -1109,6 +1130,19 @@ class SugarBean
                     }
                 }
                 else {
+
+                    //Expose the cooresponding id field of a relate field if it is only defined as a link so that users can relate records by id during import
+                    if( isset($value_array['type']) && ($value_array['type'] == 'relate') && isset($value_array['id_name']) )
+                    {
+                        $idField = $value_array['id_name'];
+                        if( isset($fieldDefs[$idField]) && isset($fieldDefs[$idField]['type'] ) && $fieldDefs[$idField]['type'] == 'link' )
+                        {
+                            $tmpFieldDefs = $fieldDefs[$idField];
+                            $tmpFieldDefs['vname'] = translate($value_array['vname'], $this->module_dir) . " " . $GLOBALS['app_strings']['LBL_ID'];
+                            $importableFields[$idField]=$tmpFieldDefs;
+                        }
+                    }
+
                     $importableFields[$key]=$value_array;
                 }
             }
@@ -1288,7 +1322,7 @@ class SugarBean
             if(isset($def['dbType']))
                 $type .= $def['dbType'];
 
-            if($def['type'] == 'html') {
+            if($def['type'] == 'html' || $def['type'] == 'longhtml') {
                 $this->$key = SugarCleaner::cleanHtml($this->$key, true);
             } elseif((strpos($type, 'char') !== false ||
                 strpos($type, 'text') !== false ||
@@ -1389,6 +1423,17 @@ class SugarBean
         $this->call_custom_logic("before_save", $custom_logic_arguments);
         unset($custom_logic_arguments);
 
+        // If we're importing back semi-colon separated non-primary emails
+        if ($this->hasEmails() && !empty($this->email_addresses_non_primary) && is_array($this->email_addresses_non_primary))
+        {
+            // Add each mail to the account
+            foreach ($this->email_addresses_non_primary as $mail)
+            {
+                $this->emailAddress->addAddress($mail);
+            }
+            $this->emailAddress->save($this->id, $this->module_dir);
+        }
+
         if(isset($this->custom_fields))
         {
             $this->custom_fields->bean = $this;
@@ -1399,12 +1444,12 @@ class SugarBean
         $this->preprocess_fields_on_save();
 
         //construct the SQL to create the audit record if auditing is enabled.
-        $dataChanges=array();
+        $auditDataChanges=array();
         if ($this->is_AuditEnabled()) {
             if ($isUpdate && !isset($this->fetched_row)) {
                 $GLOBALS['log']->debug('Auditing: Retrieve was not called, audit record will not be created.');
             } else {
-                $dataChanges=$this->db->getDataChanges($this);
+                $auditDataChanges=$this->db->getAuditDataChanges($this);
             }
         }
 
@@ -1416,9 +1461,9 @@ class SugarBean
             $this->db->insert($this);
         }
 
-        if (!empty($dataChanges) && is_array($dataChanges))
+        if (!empty($auditDataChanges) && is_array($auditDataChanges))
         {
-            foreach ($dataChanges as $change)
+            foreach ($auditDataChanges as $change)
             {
                 $this->db->save_audit_records($this,$change);
             }
@@ -1427,6 +1472,11 @@ class SugarBean
 
         if (empty($GLOBALS['resavingRelatedBeans'])){
             SugarRelationship::resaveRelatedBeans();
+        }
+
+        // populate fetched row with current bean values
+        foreach ($auditDataChanges as $change) {
+            $this->fetched_row[$change['field_name']] = $change['after'];
         }
 
 
@@ -1651,41 +1701,61 @@ class SugarBean
     }
 
     /**
-    * This function is a good location to save changes that have been made to a relationship.
-    * This should be overriden in subclasses that have something to save.
-    *
-    * @param $is_update true if this save is an update.
-    */
-function save_relationship_changes($is_update, $exclude=array())
+     * This function is a good location to save changes that have been made to a relationship.
+     * This should be overridden in subclasses that have something to save.
+     *
+     * @param boolean $is_update    true if this save is an update.
+     * @param array $exclude        a way to exclude relationships
+     */
+    public function save_relationship_changes($is_update, $exclude = array())
     {
+        list($new_rel_id, $new_rel_link) = $this->set_relationship_info($exclude);
+
+        $new_rel_id = $this->handle_preset_relationships($new_rel_id, $new_rel_link, $exclude);
+
+        $this->handle_remaining_relate_fields($exclude);
+
+        $this->update_parent_relationships($exclude);
+
+        $this->handle_request_relate($new_rel_id, $new_rel_link);
+    }
+
+    /**
+     * Look in the bean for the new relationship_id and relationship_name if $this->not_use_rel_in_req is set to true,
+     * otherwise check the $_REQUEST param for a relate_id and relate_to field.  Once we have that make sure that it's
+     * not excluded from the passed in array of relationships to exclude
+     *
+     * @param array $exclude        any relationship's to exclude
+     * @return array                The relationship_id and relationship_name in an array
+     */
+    protected function set_relationship_info($exclude = array())
+    {
+
         $new_rel_id = false;
         $new_rel_link = false;
-
         // check incoming data
-        if(isset($this->not_use_rel_in_req) && $this->not_use_rel_in_req)
-        {
+        if (isset($this->not_use_rel_in_req) && $this->not_use_rel_in_req == true) {
             // if we should use relation data from properties (for REQUEST-independent calls)
-            $rel_id=isset($this->new_rel_id) ? $this->new_rel_id : '';
-            $rel_link=isset($this->new_rel_relname) ? $this->new_rel_relname : '';
+            $rel_id = isset($this->new_rel_id) ? $this->new_rel_id : '';
+            $rel_link = isset($this->new_rel_relname) ? $this->new_rel_relname : '';
         }
-        else 
-        {  
+        else
+        {
             // if we should use relation data from REQUEST
-            $rel_id=isset($_REQUEST['relate_id']) ? $_REQUEST['relate_id'] : '';
-            $rel_link=isset($_REQUEST['relate_to']) ? $_REQUEST['relate_to'] : '';
+            $rel_id = isset($_REQUEST['relate_id']) ? $_REQUEST['relate_id'] : '';
+            $rel_link = isset($_REQUEST['relate_to']) ? $_REQUEST['relate_to'] : '';
         }
 
         // filter relation data
-        if($rel_id && $rel_link && !in_array($rel_link, $exclude) && $rel_id != $this->id)
-        {
+        if ($rel_id && $rel_link && !in_array($rel_link, $exclude) && $rel_id != $this->id) {
             $new_rel_id = $rel_id;
             $new_rel_link = $rel_link;
             // Bug #53223 : wrong relationship from subpanel create button
             // if LHSModule and RHSModule are same module use left link to add new item b/s of:
             // $rel_id and $rel_link are not emty - request is from subpanel
             // $rel_link contains relationship name - checked by call load_relationship
-            $this->load_relationship($rel_link);
-            if ( !empty($this->$rel_link) && $this->$rel_link->getRelationshipObject() && $this->$rel_link->getRelationshipObject()->getLHSModule() == $this->$rel_link->getRelationshipObject()->getRHSModule() )
+            $isRelationshipLoaded = $this->load_relationship($rel_link);
+            if ($isRelationshipLoaded && !empty($this->$rel_link) && $this->$rel_link->getRelationshipObject() && $this->$rel_link->getRelationshipObject()->getLHSModule() == $this->$rel_link->getRelationshipObject()->getRHSModule() )
             {
                 $new_rel_link = $this->$rel_link->getRelationshipObject()->getLHSLink();
             }
@@ -1700,17 +1770,30 @@ function save_relationship_changes($is_update, $exclude=array())
                     }
                 }
             }
-         }
+        }
 
+        return array($new_rel_id, $new_rel_link);
+    }
 
-        // First we handle the preset fields listed in the fixed relationship_fields array hardcoded into the OOB beans
-        // TODO: remove this mechanism and replace with mechanism exclusively based on the vardefs
-        if (isset($this->relationship_fields) && is_array($this->relationship_fields))
-        {
-            foreach ($this->relationship_fields as $id=>$rel_name)
+    /**
+     * Handle the preset fields listed in the fixed relationship_fields array hardcoded into the OOB beans
+     *
+     * TODO: remove this mechanism and replace with mechanism exclusively based on the vardefs
+     *
+     * @api
+     * @see save_relationship_changes
+     * @param string|boolean $new_rel_id    String of the ID to add
+     * @param string                        Relationship Name
+     * @param array $exclude                any relationship's to exclude
+     * @return string|boolean               Return the new_rel_id if it was not used.  False if it was used.
+     */
+    protected function handle_preset_relationships($new_rel_id, $new_rel_link, $exclude = array())
+    {
+        if (isset($this->relationship_fields) && is_array($this->relationship_fields)) {
+            foreach ($this->relationship_fields as $id => $rel_name)
             {
 
-                if(in_array($id, $exclude))continue;
+                if (in_array($id, $exclude)) continue;
 
                 if(!empty($this->$id))
                 {
@@ -1721,60 +1804,82 @@ function save_relationship_changes($is_update, $exclude=array())
                     }
                     $GLOBALS['log']->debug('save_relationship_changes(): From relationship_field array - adding a relationship record: '.$rel_name . ' = ' . $this->$id);
                     //already related the new relationship id so let's set it to false so we don't add it again using the _REQUEST['relate_i'] mechanism in a later block
-                    if($this->$id == $new_rel_id){
+                    $this->load_relationship($rel_name);
+                    $rel_add = $this->$rel_name->add($this->$id);
+                    // move this around to only take out the id if it was save successfully
+                    if ($this->$id == $new_rel_id && $rel_add == true) {
                         $new_rel_id = false;
                     }
-                    $this->load_relationship($rel_name);
-                    $this->$rel_name->add($this->$id);
-                    $related = true;
-                }
-                else
-                {
+                } else {
                     //if before value is not empty then attempt to delete relationship
-                    if(!empty($this->rel_fields_before_value[$id]))
-                    {
-                        $GLOBALS['log']->debug('save_relationship_changes(): From relationship_field array - attempting to remove the relationship record, using relationship attribute'.$rel_name);
+                    if (!empty($this->rel_fields_before_value[$id])) {
+                        $GLOBALS['log']->debug('save_relationship_changes(): From relationship_field array - attempting to remove the relationship record, using relationship attribute' . $rel_name);
                         $this->load_relationship($rel_name);
-                        $this->$rel_name->delete($this->id,$this->rel_fields_before_value[$id]);
+                        $this->$rel_name->delete($this->id, $this->rel_fields_before_value[$id]);
                     }
                 }
             }
         }
 
-/*      Next, we'll attempt to update all of the remaining relate fields in the vardefs that have 'save' set in their field_def
-        Only the 'save' fields should be saved as some vardef entries today are not for display only purposes and break the application if saved
-        If the vardef has entries for field <a> of type relate, where a->id_name = <b> and field <b> of type link
-        then we receive a value for b from the MVC in the _REQUEST, and it should be set in the bean as $this->$b
-*/
+        return $new_rel_id;
+    }
 
-        foreach ( $this->field_defs as $def )
+    /**
+     * Next, we'll attempt to update all of the remaining relate fields in the vardefs that have 'save' set in their field_def
+     * Only the 'save' fields should be saved as some vardef entries today are not for display only purposes and break the application if saved
+     * If the vardef has entries for field <a> of type relate, where a->id_name = <b> and field <b> of type link
+     * then we receive a value for b from the MVC in the _REQUEST, and it should be set in the bean as $this->$b
+     *
+     * @api
+     * @see save_relationship_changes
+     * @param array $exclude            any relationship's to exclude
+     * @return array                    the list of relationships that were added or removed successfully or if they were a failure
+     */
+    protected function handle_remaining_relate_fields($exclude = array())
+    {
+
+        $modified_relationships = array(
+            'add' => array('success' => array(), 'failure' => array()),
+            'remove' => array('success' => array(), 'failure' => array()),
+        );
+
+        foreach ($this->field_defs as $def)
         {
-            if ($def [ 'type' ] == 'relate' && isset ( $def [ 'id_name'] ) && isset ( $def [ 'link'] ) && isset ( $def[ 'save' ]) )
-            {
-                if (  in_array( $def['id_name'], $exclude) || in_array( $def['id_name'], $this->relationship_fields ) )
-                    continue ; // continue to honor the exclude array and exclude any relationships that will be handled by the relationship_fields mechanism
+            if ($def ['type'] == 'relate' && isset ($def ['id_name']) && isset ($def ['link']) && isset ($def['save'])) {
+                if (in_array($def['id_name'], $exclude) || in_array($def['id_name'], $this->relationship_fields))
+                    continue; // continue to honor the exclude array and exclude any relationships that will be handled by the relationship_fields mechanism
 
-                $linkField = $def [ 'link' ] ;
-                if (isset( $this->field_defs[$linkField ] ))
-                {
-                    $linkfield = $this->field_defs[$linkField] ;
-
-                    if ($this->load_relationship ( $linkField))
-                    {
+                $linkField = $def ['link'];
+                if (isset($this->field_defs[$linkField])) {
+                    if ($this->load_relationship($linkField)) {
                         $idName = $def['id_name'];
 
-                        if (!empty($this->rel_fields_before_value[$idName]) && empty($this->$idName))
-                        {
+                        if (!empty($this->rel_fields_before_value[$idName]) && empty($this->$idName)) {
                             //if before value is not empty then attempt to delete relationship
                             $GLOBALS['log']->debug("save_relationship_changes(): From field_defs - attempting to remove the relationship record: {$def [ 'link' ]} = {$this->rel_fields_before_value[$def [ 'id_name' ]]}");
-                            $this->$def ['link' ]->delete($this->id, $this->rel_fields_before_value[$def [ 'id_name' ]] );
+                            $success = $this->$def ['link']->delete($this->id, $this->rel_fields_before_value[$def ['id_name']]);
+                            // just need to make sure it's true and not an array as it's possible to return an array
+                            if($success == true) {
+                                $modified_relationships['remove']['success'][] = $def['link'];
+                            } else {
+                                $modified_relationships['remove']['failure'][] = $def['link'];
+                            }
+                            $GLOBALS['log']->debug("save_relationship_changes(): From field_defs - attempting to remove the relationship record returned " . var_export($success, true));
                         }
 
-                        if (!empty($this->$idName) && is_string($this->$idName))
-                        {
-                            $GLOBALS['log']->debug("save_relationship_changes(): From field_defs - attempting to add a relationship record - {$def [ 'link' ]} = {$this->$def [ 'id_name' ]}" );
+                        if (!empty($this->$idName) && is_string($this->$idName)) {
+                            $GLOBALS['log']->debug("save_relationship_changes(): From field_defs - attempting to add a relationship record - {$def [ 'link' ]} = {$this->$def [ 'id_name' ]}");
 
-                            $this->$linkField->add($this->$idName);
+                            $success = $this->$linkField->add($this->$idName);
+
+                            // just need to make sure it's true and not an array as it's possible to return an array
+                            if($success == true) {
+                                $modified_relationships['add']['success'][] = $linkField;
+                            } else {
+                                $modified_relationships['add']['failure'][] = $linkField;
+                            }
+
+                            $GLOBALS['log']->debug("save_relationship_changes(): From field_defs - add a relationship record returned " . var_export($success, true));
                         }
                     } else {
                         $GLOBALS['log']->fatal("Failed to load relationship {$linkField} while saving {$this->module_dir}");
@@ -1783,40 +1888,135 @@ function save_relationship_changes($is_update, $exclude=array())
             }
         }
 
-        // Finally, we update a field listed in the _REQUEST['*/relate_id']/_REQUEST['relate_to'] mechanism (if it hasn't already been updated above)
-        if(!empty($new_rel_id)){
+        return $modified_relationships;
+    }
 
-            if($this->load_relationship($new_rel_link)){
-                $this->$new_rel_link->add($new_rel_id);
 
-            }else{
+    /**
+     * Updates relationships based on changes to fields of type 'parent' which
+     * may or may not have links associated with them
+     *
+     * @param array $exclude
+     */
+    protected function update_parent_relationships($exclude = array())
+    {
+        foreach ($this->field_defs as $def)
+        {
+            if (!empty($def['type']) && $def['type'] == "parent")
+            {
+                if (empty($def['type_name']) || empty($def['id_name']))
+                    continue;
+                $typeField = $def['type_name'];
+                $idField = $def['id_name'];
+                if (in_array($idField, $exclude))
+                    continue;
+                //Determine if the parent field has changed.
+                if (
+                    //First check if the fetched row parent existed and now we no longer have one
+                    (!empty($this->fetched_row[$typeField]) && !empty($this->fetched_row[$idField])
+                        && (empty($this->$typeField) || empty($this->$idField))
+                    ) ||
+                    //Next check if we have one now that doesn't match the fetch row
+                    (!empty($this->$typeField) && !empty($this->$idField) &&
+                        (empty($this->fetched_row[$typeField]) || empty($this->fetched_row[$idField])
+                        || $this->fetched_row[$idField] != $this->$idField)
+                    ) ||
+                    // Check if we are deleting the bean, should remove the bean from any relationships
+                    $this->deleted == 1
+                ) {
+                    $parentLinks = array();
+                    //Correlate links to parent field module types
+                    foreach ($this->field_defs as $ldef)
+                    {
+                        if (!empty($ldef['type']) && $ldef['type'] == "link" && !empty($ldef['relationship']))
+                        {
+                            $relDef = SugarRelationshipFactory::getInstance()->getRelationshipDef($ldef['relationship']);
+                            if (!empty($relDef['relationship_role_column']) && $relDef['relationship_role_column'] == $typeField)
+                            {
+                                $parentLinks[$relDef['lhs_module']] = $ldef;
+                            }
+                        }
+                    }
+
+                    // Save $this->$idField, because it can be resetted in case of link->delete() call
+                    $idFieldVal = $this->$idField;
+
+                    //If we used to have a parent, call remove on that relationship
+                    if (!empty($this->fetched_row[$typeField]) && !empty($this->fetched_row[$idField])
+                        && !empty($parentLinks[$this->fetched_row[$typeField]])
+                        && ($this->fetched_row[$idField] != $this->$idField))
+                    {
+                        $oldParentLink = $parentLinks[$this->fetched_row[$typeField]]['name'];
+                        //Load the relationship
+                        if ($this->load_relationship($oldParentLink))
+                        {
+                            $this->$oldParentLink->delete($this->fetched_row[$idField]);
+                            // Should resave the old parent
+                            SugarRelationship::addToResaveList(BeanFactory::getBean($this->fetched_row[$typeField], $this->fetched_row[$idField]));
+                        }
+                    }
+
+                    // If both parent type and parent id are set, save it unless the bean is being deleted
+                    if (!empty($this->$typeField)
+                       && !empty($idFieldVal)
+                       && !empty($parentLinks[$this->$typeField]['name'])
+                       && $this->deleted != 1
+                    ) {
+                        //Now add the new parent
+                        $parentLink = $parentLinks[$this->$typeField]['name'];
+                        if ($this->load_relationship($parentLink))
+                        {
+                            $this->$parentLink->add($idFieldVal);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Finally, we update a field listed in the _REQUEST['%/relate_id']/_REQUEST['relate_to'] mechanism (if it has not already been updated)
+     *
+     * @api
+     * @see save_relationship_changes
+     * @param string|boolean $new_rel_id
+     * @param string $new_rel_link
+     * @return boolean
+     */
+    protected function handle_request_relate($new_rel_id, $new_rel_link)
+    {
+        if (!empty($new_rel_id)) {
+
+            if ($this->load_relationship($new_rel_link)) {
+                return $this->$new_rel_link->add($new_rel_id);
+            } else {
                 $lower_link = strtolower($new_rel_link);
-                if($this->load_relationship($lower_link)){
-                    $this->$lower_link->add($new_rel_id);
+                if ($this->load_relationship($lower_link)) {
+                    return $this->$lower_link->add($new_rel_id);
 
-                }else{
+                } else {
                     require_once('data/Link2.php');
-                    $rel = Relationship::retrieve_by_modules($new_rel_link, $this->module_dir, $GLOBALS['db'], 'many-to-many');
+                    $rel = Relationship::retrieve_by_modules($new_rel_link, $this->module_dir, $this->db, 'many-to-many');
 
-                    if(!empty($rel)){
-                        foreach($this->field_defs as $field=>$def){
-                            if($def['type'] == 'link' && !empty($def['relationship']) && $def['relationship'] == $rel){
+                    if (!empty($rel)) {
+                        foreach ($this->field_defs as $field => $def) {
+                            if ($def['type'] == 'link' && !empty($def['relationship']) && $def['relationship'] == $rel) {
                                 $this->load_relationship($field);
-                                $this->$field->add($new_rel_id);
-                                return;
-
+                                return $this->$field->add($new_rel_id);
                             }
 
                         }
                         //ok so we didn't find it in the field defs let's save it anyway if we have the relationshp
 
-                        $this->$rel=new Link2($rel, $this, array());
-                        $this->$rel->add($new_rel_id);
+                        $this->$rel = new Link2($rel, $this, array());
+                        return $this->$rel->add($new_rel_id);
                     }
                 }
-
             }
         }
+
+        // nothing was saved so just return false;
+        return false;
     }
 
     /**
@@ -2088,26 +2288,11 @@ function save_relationship_changes($is_update, $exclude=array())
         {
             $id = $this->id;
         }
-        if(isset($this->custom_fields))
-        {
-            $custom_join = $this->custom_fields->getJOIN();
-        }
-        else
-            $custom_join = false;
+        $custom_join = $this->getCustomJoin();
 
-        if($custom_join)
-        {
-            $query = "SELECT $this->table_name.*". $custom_join['select']. " FROM $this->table_name ";
-        }
-        else
-        {
-            $query = "SELECT $this->table_name.* FROM $this->table_name ";
-        }
+        $query = "SELECT $this->table_name.*". $custom_join['select']. " FROM $this->table_name ";
 
-        if($custom_join)
-        {
-            $query .= ' ' . $custom_join['join'];
-        }
+        $query .= $custom_join['join'];
         $query .= " WHERE $this->table_name.id = ".$this->db->quoted($id);
         if ($deleted) $query .= " AND $this->table_name.deleted=0";
         $GLOBALS['log']->debug("Retrieve $this->object_name : ".$query);
@@ -2128,6 +2313,10 @@ function save_relationship_changes($is_update, $exclude=array())
         $this->fetched_row=$row;
         $this->populateFromRow($row);
 
+        // fix defect #52438. implement the same logic as sugar_currency_format
+        // Smarty modifier does.
+        $this->populateCurrencyFields();
+
         global $module, $action;
         //Just to get optimistic locking working for this release
         if($this->optimistic_lock && $module == $this->module_dir && $action =='EditView' )
@@ -2139,14 +2328,22 @@ function save_relationship_changes($is_update, $exclude=array())
         $this->processed_dates_times = array();
         $this->check_date_relationships_load();
 
-        if($custom_join)
+        if(isset($this->custom_fields))
         {
             $this->custom_fields->fill_relationships();
         }
-		
+
 		$this->is_updated_dependent_fields = false;
         $this->fill_in_additional_detail_fields();
         $this->fill_in_relationship_fields();
+// save related fields values for audit
+         foreach ($this->get_related_fields() as $rel_field_name)
+         {
+             if (! empty($this->$rel_field_name['name']))
+             {
+                 $this->fetched_rel_row[$rel_field_name['name']] = $this->$rel_field_name['name'];
+             }
+         }
         //make a copy of fields in the relationship_fields array. These field values will be used to
         //clear relationship.
         foreach ( $this->field_defs as $key => $def )
@@ -2224,11 +2421,8 @@ function save_relationship_changes($is_update, $exclude=array())
     */
     function add_list_count_joins(&$query, $where)
     {
-        $custom_join = $this->custom_fields->getJOIN();
-        if($custom_join)
-        {
-            $query .= $custom_join['join'];
-        }
+        $custom_join = $this->getCustomJoin();
+        $query .= $custom_join['join'];
 
     }
 
@@ -2316,7 +2510,6 @@ function save_relationship_changes($is_update, $exclude=array())
         {
             $show_deleted = 1;
         }
-        $order_by=$this->process_order_by($order_by);
 
         if($this->bean_implements('ACL') && ACLController::requireOwner($this->module_dir, 'list') )
         {
@@ -2343,11 +2536,12 @@ function save_relationship_changes($is_update, $exclude=array())
     *
     * @param string $order_by  Order by clause to be processed
     * @param SugarBean $submodule name of the module this order by clause is for
+    * @param boolean $suppress_table_name Whether table name should be suppressed
     * @return string Processed order by clause
     *
     * Internal function, do not override.
     */
-    function process_order_by ($order_by, $submodule = null)
+    public function process_order_by($order_by, $submodule = null, $suppress_table_name = false)
     {
         if (empty($order_by))
             return $order_by;
@@ -2361,40 +2555,60 @@ function save_relationship_changes($is_update, $exclude=array())
             //submodule is set, so this is for subpanel, use submodule
             $bean_queried = $submodule;
         }
-        $elements = explode(',',$order_by);
-        foreach ($elements as $key=>$value)
-        {
-            if (strchr($value,'.') === false)
-            {
-                //value might have ascending and descending decorations
-                $list_column = explode(' ',trim($value));
-                if (isset($list_column[0]))
-                {
-                    $list_column_name=trim($list_column[0]);
-                    if (isset($bean_queried->field_defs[$list_column_name]))
-                    {
-                        $source=isset($bean_queried->field_defs[$list_column_name]['source']) ? $bean_queried->field_defs[$list_column_name]['source']:'db';
-                        if (empty($bean_queried->field_defs[$list_column_name]['table']) && $source=='db')
-                        {
-                            $list_column[0] = $bean_queried->table_name .".".$list_column[0] ;
-                        }
-                        if (empty($bean_queried->field_defs[$list_column_name]['table']) && $source=='custom_fields')
-                        {
-                            $list_column[0] = $bean_queried->table_name ."_cstm.".$list_column[0] ;
-                        }
-                        // Bug 38803 - Use CONVERT() function when doing an order by on ntext, text, and image fields
-                        if ($source != 'non-db' && $this->db->isTextType($this->db->getFieldType($bean_queried->field_defs[$list_column_name]))) {
-                            $list_column[0] = $this->db->convert($list_column[0], "text2char");
-                        }
-                        $value = implode(' ',$list_column);
-                    } else {
-                        $GLOBALS['log']->debug("process_order_by: ($list_column[0]) does not have a vardef entry.");
+
+        $raw_elements = explode(',', $order_by);
+        $valid_elements = array();
+        foreach ($raw_elements as $key => $value) {
+
+            $is_valid = false;
+
+            //value might have ascending and descending decorations
+            $list_column = preg_split('/\s/', trim($value), 2);
+            $list_column = array_map('trim', $list_column);
+
+            $list_column_name = $list_column[0];
+            if (isset($bean_queried->field_defs[$list_column_name])) {
+                $field_defs = $bean_queried->field_defs[$list_column_name];
+                $source = isset($field_defs['source']) ? $field_defs['source'] : 'db';
+
+                if (empty($field_defs['table']) && !$suppress_table_name) {
+                    if ($source == 'db') {
+                        $list_column[0] = $bean_queried->table_name . '.' . $list_column[0] ;
+                    } elseif ($source == 'custom_fields') {
+                        $list_column[0] = $bean_queried->table_name . '_cstm.' . $list_column[0] ;
                     }
                 }
+
+                // Bug 38803 - Use CONVERT() function when doing an order by on ntext, text, and image fields
+                if ($source != 'non-db'
+                    && $this->db->isTextType($this->db->getFieldType($bean_queried->field_defs[$list_column_name]))) {
+                    // array(10000) is for db2 only. It tells db2manager to cast 'clob' to varchar(10000) for this 'sort by' column
+                    $list_column[0] = $this->db->convert($list_column[0], "text2char", array(10000));
+                }
+
+                $is_valid = true;
+
+                if (isset($list_column[1])) {
+                    switch (strtolower($list_column[1])) {
+                        case 'asc':
+                        case 'desc':
+                            break;
+                        default:
+                            $GLOBALS['log']->debug("process_order_by: ($list_column[1]) is not a valid order.");
+                            unset($list_column[1]);
+                            break;
+                    }
+                }
+            } else {
+                $GLOBALS['log']->debug("process_order_by: ($list_column[0]) does not have a vardef entry.");
             }
-            $elements[$key]=$value;
+
+            if ($is_valid) {
+                $valid_elements[$key] = implode(' ', $list_column);
+            }
         }
-        return implode(',', $elements);
+
+        return implode(', ', $valid_elements);
 
     }
 
@@ -2480,12 +2694,12 @@ function save_relationship_changes($is_update, $exclude=array())
         }
 
         $this->load_relationship($related_field_name);
-        
+
         if ($this->$related_field_name instanceof Link) {
-            
+
             $query_array = $this->$related_field_name->getQuery(true);
         } else {
-            
+
             $query_array = $this->$related_field_name->getQuery(array(
                 "return_as_array" => true,
                 'where' => '1=1' // hook for 'where' clause in M2MRelationship file
@@ -2556,8 +2770,8 @@ function save_relationship_changes($is_update, $exclude=array())
                     }
                     $query_array = $parentbean->$related_field_name->getSubpanelQuery(array(), true);
                 }
-                $table_where = $this_subpanel->get_where();
-                $where_definition = $query_array['where'];
+                $table_where = preg_replace('/^\s*WHERE/i', '', $this_subpanel->get_where());
+                $where_definition = preg_replace('/^\s*WHERE/i', '', $query_array['where']);
 
                 if(!empty($table_where))
                 {
@@ -2574,12 +2788,13 @@ function save_relationship_changes($is_update, $exclude=array())
                 $submodulename = $this_subpanel->_instance_properties['module'];
                 $submoduleclass = $beanList[$submodulename];
                 //require_once($beanFiles[$submoduleclass]);
+
+                /** @var SugarBean $submodule */
                 $submodule = new $submoduleclass();
                 $subwhere = $where_definition;
 
 
 
-                $subwhere = str_replace('WHERE', '', $subwhere);
                 $list_fields = $this_subpanel->get_list_fields();
                 foreach($list_fields as $list_key=>$list_field)
                 {
@@ -2603,7 +2818,10 @@ function save_relationship_changes($is_update, $exclude=array())
                 $params['include_custom_fields'] = !$subpanel_def->isCollection();
                 $params['collection_list'] = $subpanel_def->get_inst_prop_value('collection_list');
 
-                $subquery = $submodule->create_new_list_query('',$subwhere ,$list_fields,$params, 0,'', true,$parentbean);
+                // use single select in case when sorting by relate field
+                $singleSelect = $submodule->is_relate_field($order_by);
+
+                $subquery = $submodule->create_new_list_query('',$subwhere ,$list_fields,$params, 0,'', true,$parentbean, $singleSelect);
 
                 $subquery['select'] = $subquery['select']." , '$panel_name' panel_name ";
                 $subquery['from'] = $subquery['from'].$query_array['join'];
@@ -2617,7 +2835,7 @@ function save_relationship_changes($is_update, $exclude=array())
     }
 
     /**
-    * Constructs a query to fetch data for supanels and list views
+     * Constructs a query to fetch data for supanels and list views
      *
      * It constructs union queries for activities subpanel.
      *
@@ -2625,9 +2843,16 @@ function save_relationship_changes($is_update, $exclude=array())
      * @param string $order_by Optional, order by clause
      * @param string $sort_order Optional, sort order
      * @param string $where Optional, additional where clause
+     * @param int $row_offset
+     * @param int $limit
+     * @param int $max
+     * @param int $show_deleted
+     * @param aSubPanel $subpanel_def
+     *
+     * @return array
      *
      * Internal Function, do not overide.
-    */
+     */
     function get_union_related_list($parentbean, $order_by = "", $sort_order='', $where = "",
     $row_offset = 0, $limit=-1, $max=-1, $show_deleted = 0, $subpanel_def)
     {
@@ -2715,7 +2940,7 @@ function save_relationship_changes($is_update, $exclude=array())
                 {
                     if (!isset($subquery['query_fields'][$field]))
                     {
-                        $subquery['select'] .= " ' ' $field,";
+                        $subquery['select'] .= " NULL $field,";
                     }
                     else
                     {
@@ -2773,25 +2998,24 @@ function save_relationship_changes($is_update, $exclude=array())
 
         if(!empty($order_by))
         {
-            $submodule = false;
-            if(!$subpanel_def->isCollection())
-            {
-                $submodulename = $subpanel_def->_instance_properties['module'];
-                $submoduleclass = $beanList[$submodulename];
-                $submodule = new $submoduleclass();
+            $isCollection = $subpanel_def->isCollection();
+            if ($isCollection) {
+                /** @var aSubPanel $header */
+                $header = $subpanel_def->get_header_panel_def();
+                $submodule = $header->template_instance;
+                $suppress_table_name = true;
+            } else {
+                $submodule = $subpanel_def->template_instance;
+                $suppress_table_name = false;
             }
-            if(!empty($submodule) && !empty($submodule->table_name))
-            {
-                $final_query .= " ORDER BY " .$parentbean->process_order_by($order_by, $submodule);
 
+            if (!empty($sort_order)) {
+                $order_by .= ' ' . $sort_order;
             }
-            else
-            {
-                $final_query .= " ORDER BY ". $order_by . ' ';
-            }
-            if(!empty($sort_order))
-            {
-                $final_query .= ' ' .$sort_order;
+
+            $order_by = $parentbean->process_order_by($order_by, $submodule, $suppress_table_name);
+            if (!empty($order_by)) {
+                $final_query .= ' ORDER BY ' . $order_by;
             }
         }
 
@@ -2902,22 +3126,14 @@ function save_relationship_changes($is_update, $exclude=array())
         {
             $ret_array['secondary_select'] = '';
         }
-        $custom_join = false;
-        if((!isset($params['include_custom_fields']) || $params['include_custom_fields']) &&  isset($this->custom_fields))
+        $custom_join = $this->getCustomJoin( empty($filter)? true: $filter );
+        if((!isset($params['include_custom_fields']) || $params['include_custom_fields']))
         {
-
-            $custom_join = $this->custom_fields->getJOIN( empty($filter)? true: $filter );
-            if($custom_join)
-            {
-                $ret_array['select'] .= ' ' .$custom_join['select'];
-            }
+            $ret_array['select'] .= $custom_join['select'];
         }
-        if($custom_join)
-        {
-            $ret_array['from'] .= ' ' . $custom_join['join'];
-            // Bug 52490 - Captivea (Sve) - To be able to add custom fields inside where clause in a subpanel
-            $ret_array['from_min'] .= ' ' . $custom_join['join'];
-        }
+        $ret_array['from'] .= $custom_join['join'];
+        // Bug 52490 - Captivea (Sve) - To be able to add custom fields inside where clause in a subpanel
+        $ret_array['from_min'] .= $custom_join['join'];
         $jtcount = 0;
         //LOOP AROUND FOR FIXIN VARDEF ISSUES
         require('include/VarDefHandler/listvardefoverride.php');
@@ -3036,7 +3252,7 @@ function save_relationship_changes($is_update, $exclude=array())
             //Custom relate field or relate fields built in module builder which have no link field associated.
             if ($data['type'] == 'relate' && (isset($data['custom_module']) || isset($data['ext2']))) {
                 $joinTableAlias = 'jt' . $jtcount;
-                $relateJoinInfo = $this->custom_fields->getRelateJoin($data, $joinTableAlias);
+                $relateJoinInfo = $this->custom_fields->getRelateJoin($data, $joinTableAlias, false);
                 $ret_array['select'] .= $relateJoinInfo['select'];
                 $ret_array['from'] .= $relateJoinInfo['from'];
                 //Replace any references to the relationship in the where clause with the new alias
@@ -3078,7 +3294,8 @@ function save_relationship_changes($is_update, $exclude=array())
                     $jtcount++;
                 }
             }
-            if($data['type'] == 'relate' && isset($data['link']))
+
+            if ($this->is_relate_field($field))
             {
                 $this->load_relationship($data['link']);
                 if(!empty($this->$data['link']))
@@ -3211,6 +3428,9 @@ function save_relationship_changes($is_update, $exclude=array())
                         }
                         if(isset($data['additionalFields'])){
                             foreach($data['additionalFields'] as $k=>$v){
+                                if (!empty($data['id_name']) && $data['id_name'] == $v && !empty($fields[$data['id_name']])) {
+                                    continue;
+                                }
                                 $ret_array['select'] .= ' , ' . $params['join_table_alias'] . '.' . $k . ' ' . $v;
                             }
                         }
@@ -3313,10 +3533,11 @@ function save_relationship_changes($is_update, $exclude=array())
             $ret_array['where'] = " where ($where) AND $where_auto";
         else
             $ret_array['where'] = " where $where_auto";
-        if(!empty($order_by))
-        {
-            //make call to process the order by clause
-            $ret_array['order_by'] = " ORDER BY ". $this->process_order_by($order_by);
+
+        //make call to process the order by clause
+        $order_by = $this->process_order_by($order_by);
+        if (!empty($order_by)) {
+            $ret_array['order_by'] = " ORDER BY " . $order_by;
         }
         if($singleSelect)
         {
@@ -3505,6 +3726,7 @@ function save_relationship_changes($is_update, $exclude=array())
                 //instantiate a new class each time. This is because php5 passes
                 //by reference by default so if we continually update $this, we will
                 //at the end have a list of all the same objects
+                /** @var SugarBean $temp */
                 $temp = new $class();
 
                 foreach($this->field_defs as $field=>$value)
@@ -3536,29 +3758,7 @@ function save_relationship_changes($is_update, $exclude=array())
 
                 // fix defect #44206. implement the same logic as sugar_currency_format
                 // Smarty modifier does.
-                if (property_exists($temp, 'currency_id') && -99 == $temp->currency_id)
-                {
-                    // manually retrieve default currency object as long as it's
-                    // not stored in database and thus cannot be joined in query
-                    require_once 'modules/Currencies/Currency.php';
-                    $currency = new Currency();
-                    $currency->retrieve($temp->currency_id);
-
-                    // walk through all currency-related fields
-                    foreach ($temp->field_defs as $temp_field)
-                    {
-                        if (isset($temp_field['type']) && 'relate' == $temp_field['type']
-                            && isset($temp_field['module'])  && 'Currencies' == $temp_field['module']
-                            && isset($temp_field['id_name']) && 'currency_id' == $temp_field['id_name'])
-                        {
-                            // populate related properties manually
-                            $temp_property     = $temp_field['name'];
-                            $currency_property = $temp_field['rname'];
-                            $temp->$temp_property = $currency->$currency_property;
-                        }
-                    }
-                }
-
+                $temp->populateCurrencyFields();
                 $list[] = $temp;
 
                 $index++;
@@ -3568,7 +3768,6 @@ function save_relationship_changes($is_update, $exclude=array())
 
             $rows_found = $row_offset + count($list);
 
-            unset($list[$limit - 1]);
             if(!$toEnd)
             {
                 $next_offset--;
@@ -4255,6 +4454,9 @@ function save_relationship_changes($is_update, $exclude=array())
             $tracker = new Tracker();
             $tracker->makeInvisibleForAll($id);
 
+
+            $this->deleteFiles();
+
             // call the custom business logic
             $this->call_custom_logic("after_delete", $custom_logic_arguments);
         }
@@ -4275,6 +4477,8 @@ function save_relationship_changes($is_update, $exclude=array())
 		$query = "UPDATE $this->table_name set deleted=0 , date_modified = '$date_modified' where id='$id'";
 		$this->db->query($query, true,"Error marking record undeleted: ");
 
+        $this->restoreFiles();
+
         // call the custom business logic
         $this->call_custom_logic("after_restore", $custom_logic_arguments);
     }
@@ -4290,6 +4494,183 @@ function save_relationship_changes($is_update, $exclude=array())
    {
     $this->delete_linked($id);
    }
+
+    /**
+     * Returns path for files of bean or false on error
+     *
+     * @return bool|string
+     */
+    public function deleteFileDirectory()
+    {
+        if (empty($this->id)) {
+            return false;
+        }
+        return preg_replace('/^(..)(..)(..)/', '$1/$2/$3/', $this->id);
+    }
+
+    /**
+     * Moves file to deleted folder
+     *
+     * @return bool success of movement
+     */
+    public function deleteFiles()
+    {
+        if (!$this->id) {
+            return true;
+        }
+        if (!$this->haveFiles()) {
+            return true;
+        }
+        $files = $this->getFiles();
+        if (empty($files)) {
+            return true;
+        }
+
+        $directory = $this->deleteFileDirectory();
+
+        $isCreated = sugar_is_dir('upload://deleted/' . $directory);
+        if (!$isCreated) {
+            sugar_mkdir('upload://deleted/' . $directory, 0777, true);
+            $isCreated = sugar_is_dir('upload://deleted/' . $directory);
+        }
+        if (!$isCreated) {
+            return false;
+        }
+
+        foreach ($files as $file) {
+            if (file_exists('upload://' . $file)) {
+                if (!sugar_rename('upload://' . $file, 'upload://deleted/' . $directory . '/' . $file)) {
+                    $GLOBALS['log']->error('Could not move file ' . $file . ' to deleted directory');
+                }
+            }
+        }
+
+        /**
+         * @var DBManager $db
+         */
+        global $db;
+        $record = array(
+            'bean_id' => $db->quoted($this->id),
+            'module' => $db->quoted($this->module_name),
+            'date_modified' => $db->convert($db->quoted(date('Y-m-d H:i:s')), 'datetime')
+        );
+        $recordDB = $db->fetchOne("SELECT id FROM cron_remove_documents WHERE module={$record['module']} AND bean_id={$record['bean_id']}");
+        if (!empty($recordDB)) {
+            $record['id'] = $db->quoted($recordDB['id']);
+        }
+        if (empty($record['id'])) {
+            $record['id'] = $db->quoted(create_guid());
+            $db->query('INSERT INTO cron_remove_documents (' . implode(', ', array_keys($record)) . ') VALUES(' . implode(', ', $record) . ')');
+        } else {
+            $db->query("UPDATE cron_remove_documents SET date_modified={$record['date_modified']} WHERE id={$record['id']}");
+        }
+
+        return true;
+    }
+
+    /**
+     * Restores files from deleted folder
+     *
+     * @return bool success of operation
+     */
+    protected function restoreFiles()
+    {
+        if (!$this->id) {
+            return true;
+        }
+        if (!$this->haveFiles()) {
+            return true;
+        }
+        $files = $this->getFiles();
+        if (empty($files)) {
+            return true;
+        }
+
+        $directory = $this->deleteFileDirectory();
+
+        foreach ($files as $file) {
+            if (sugar_is_file('upload://deleted/' . $directory . '/' . $file)) {
+                if (!sugar_rename('upload://deleted/' . $directory . '/' . $file, 'upload://' . $file)) {
+                    $GLOBALS['log']->error('Could not move file ' . $directory . '/' . $file . ' from deleted directory');
+                }
+            }
+        }
+
+        /**
+         * @var DBManager $db
+         */
+        global $db;
+        $db->query('DELETE FROM cron_remove_documents WHERE bean_id=' . $db->quoted($this->id));
+
+        return true;
+    }
+
+    /**
+     * Method returns true if bean has files
+     *
+     * @return bool
+     */
+    public function haveFiles()
+    {
+        $return = false;
+        if ($this->bean_implements('FILE')) {
+            $return = true;
+        } elseif ($this instanceof File) {
+            $return = true;
+        } elseif (!empty(self::$fileFields[$this->module_name])) {
+            $return = true;
+        } elseif (!empty($this->field_defs)) {
+            foreach ($this->field_defs as $fieldDef) {
+                if ($fieldDef['type'] != 'image') {
+                    continue;
+                }
+                $return = true;
+                break;
+            }
+        }
+        return $return;
+    }
+
+    /**
+     * Method returns array of names of files for current bean
+     *
+     * @return array
+     */
+    public  function getFiles() {
+        $files = array();
+        foreach ($this->getFilesFields() as $field) {
+            if (!empty($this->$field)) {
+                $files[] = $this->$field;
+            }
+        }
+        return $files;
+    }
+
+    /**
+     * Method returns array of name of fields which contain names of files
+     *
+     * @param bool $resetCache do not use cache
+     * @return array
+     */
+    public function getFilesFields($resetCache = false)
+    {
+        if (isset(self::$fileFields[$this->module_name]) && $resetCache == false) {
+            return self::$fileFields[$this->module_name];
+        }
+
+        self::$fileFields = array();
+        if ($this->bean_implements('FILE') || $this instanceof File) {
+            self::$fileFields[$this->module_name][] = 'id';
+        }
+        foreach ($this->field_defs as $fieldName => $fieldDef) {
+            if ($fieldDef['type'] != 'image') {
+                continue;
+            }
+            self::$fileFields[$this->module_name][] = $fieldName;
+        }
+
+        return self::$fileFields[$this->module_name];
+    }
 
     /**
     * This function is used to execute the query and create an array template objects
@@ -4357,21 +4738,14 @@ function save_relationship_changes($is_update, $exclude=array())
         $in = $idList['in'];
     }
     // MFH - Added Support For Custom Fields in Searches
-    $custom_join="";
-    if(isset($this->custom_fields)) {
-        $custom_join = $this->custom_fields->getJOIN();
-    }
+    $custom_join = $this->getCustomJoin();
 
     $query = "SELECT id ";
 
-    if (!empty($custom_join)) {
-        $query .= $custom_join['select'];
-    }
+    $query .= $custom_join['select'];
     $query .= " FROM $this->table_name ";
 
-    if (!empty($custom_join) && !empty($custom_join['join'])) {
-        $query .= " " . $custom_join['join'];
-    }
+    $query .= $custom_join['join'];
 
     $query .= " WHERE deleted=0 AND id IN $in";
     if(!empty($where))
@@ -4507,7 +4881,7 @@ function save_relationship_changes($is_update, $exclude=array())
         static $cache = array();
         // cn: bug 12270 - sensitive fields being passed arbitrarily in listViews
         $sensitiveFields = array('user_hash' => '');
-        
+
         $return_array = Array();
         global $app_list_strings, $mod_strings;
         foreach($this->field_defs as $field=>$value){
@@ -4608,17 +4982,8 @@ function save_relationship_changes($is_update, $exclude=array())
     function retrieve_by_string_fields($fields_array, $encode=true, $deleted=true)
     {
         $where_clause = $this->get_where($fields_array, $deleted);
-        if(isset($this->custom_fields))
-        $custom_join = $this->custom_fields->getJOIN();
-        else $custom_join = false;
-        if($custom_join)
-        {
-            $query = "SELECT $this->table_name.*". $custom_join['select']. " FROM $this->table_name " . $custom_join['join'];
-        }
-        else
-        {
-            $query = "SELECT $this->table_name.* FROM $this->table_name ";
-        }
+        $custom_join = $this->getCustomJoin();
+        $query = "SELECT $this->table_name.*". $custom_join['select']. " FROM $this->table_name " . $custom_join['join'];
         $query .= " $where_clause";
         $GLOBALS['log']->debug("Retrieve $this->object_name: ".$query);
         //requireSingleResult has been deprecated.
@@ -4959,7 +5324,7 @@ function save_relationship_changes($is_update, $exclude=array())
     function ACLAccess($view,$is_owner='not_set')
     {
         global $current_user;
-        if($current_user->isAdminForModule($this->getACLCategory())) {
+        if($current_user->isAdmin()) {
             return true;
         }
         $not_set = false;
@@ -5043,8 +5408,12 @@ function save_relationship_changes($is_update, $exclude=array())
             return true;
         }
         //if there is an assigned_user that is the owner
-        if(isset($this->assigned_user_id))
-        {
+        if (!empty($this->fetched_row['assigned_user_id'])) {
+            if ($this->fetched_row['assigned_user_id'] == $user_id) {
+                return true;
+            }
+            return false;
+        } elseif (isset($this->assigned_user_id)) {
             if($this->assigned_user_id == $user_id) return true;
             return false;
         }
@@ -5245,25 +5614,34 @@ function save_relationship_changes($is_update, $exclude=array())
        $street_field
        )
     {
-        $street_field_2 = $street_field.'_2';
-        $street_field_3 = $street_field.'_3';
-        $street_field_4 = $street_field.'_4';
-        if ( isset($this->$street_field_2)) {
-            $this->$street_field .= "\n". $this->$street_field_2;
-            unset($this->$street_field_2);
-        }
-        if ( isset($this->$street_field_3)) {
-            $this->$street_field .= "\n". $this->$street_field_3;
-            unset($this->$street_field_3);
-        }
-        if ( isset($this->$street_field_4)) {
-            $this->$street_field .= "\n". $this->$street_field_4;
-            unset($this->$street_field_4);
-        }
-        if ( isset($this->$street_field)) {
+        if (isset($this->$street_field)) {
+            $street_field_2 = $street_field.'_2';
+            $street_field_3 = $street_field.'_3';
+            $street_field_4 = $street_field.'_4';
+            if ( isset($this->$street_field_2)) {
+                $this->$street_field .= "\n". $this->$street_field_2;
+                unset($this->$street_field_2);
+            }
+            if ( isset($this->$street_field_3)) {
+                $this->$street_field .= "\n". $this->$street_field_3;
+                unset($this->$street_field_3);
+            }
+            if ( isset($this->$street_field_4)) {
+                $this->$street_field .= "\n". $this->$street_field_4;
+                unset($this->$street_field_4);
+            }
             $this->$street_field = trim($this->$street_field, "\n");
         }
     }
+
+    protected function getEncryptKey()
+    {
+        if(empty(self::$field_key)) {
+            self::$field_key = blowfishGetKey('encrypt_field');
+        }
+        return self::$field_key;
+    }
+
 /**
  * Encrpyt and base64 encode an 'encrypt' field type in the bean using Blowfish. The default system key is stored in cache/Blowfish/{keytype}
  * @param STRING value -plain text value of the bean field.
@@ -5272,7 +5650,7 @@ function save_relationship_changes($is_update, $exclude=array())
     function encrpyt_before_save($value)
     {
         require_once("include/utils/encryption_utils.php");
-        return blowfishEncode(blowfishGetKey('encrypt_field'),$value);
+        return blowfishEncode($this->getEncryptKey(), $value);
     }
 
 /**
@@ -5282,8 +5660,9 @@ function save_relationship_changes($is_update, $exclude=array())
  */
     function decrypt_after_retrieve($value)
     {
+        if(empty($value)) return $value; // no need to decrypt empty
         require_once("include/utils/encryption_utils.php");
-        return blowfishDecode(blowfishGetKey('encrypt_field'), $value);
+        return blowfishDecode($this->getEncryptKey(), $value);
     }
 
     /**
@@ -5475,4 +5854,89 @@ function save_relationship_changes($is_update, $exclude=array())
 	{
 		return $this->create_new_list_query($order_by, $where, array(), array(), 0, '', false, $this, true, true);
 	}
+
+    /**
+     * Determine whether the given field is a relate field
+     *
+     * @param string $field Field name
+     * @return bool
+     */
+    protected function is_relate_field($field)
+    {
+        if (!isset($this->field_defs[$field]))
+        {
+            return false;
+        }
+
+        $field_def = $this->field_defs[$field];
+
+        return isset($field_def['type'])
+            && $field_def['type'] == 'relate'
+            && isset($field_def['link']);
+    }
+
+    /**
+     * Proxy method for DynamicField::getJOIN
+     * @param bool $expandedList
+     * @param bool $includeRelates
+     * @param string|bool $where
+     * @return array
+     */
+    public function getCustomJoin($expandedList = false, $includeRelates = false, &$where = false)
+    {
+        $result = array(
+            'select' => '',
+            'join' => ''
+        );
+        if(isset($this->custom_fields))
+        {
+            $result = $this->custom_fields->getJOIN($expandedList, $includeRelates, $where);
+        }
+        return $result;
+    }
+
+    /**
+     * Populates currency fields in case of currency is default and it's
+     * attributes are not retrieved from database (bugs ##44206, 52438)
+     */
+    protected function populateCurrencyFields()
+    {
+        if (property_exists($this, 'currency_id') && $this->currency_id == -99) {
+            // manually retrieve default currency object as long as it's
+            // not stored in database and thus cannot be joined in query
+            $currency = BeanFactory::getBean('Currencies', $this->currency_id);
+
+            if ($currency) {
+                // walk through all currency-related fields
+                foreach ($this->field_defs as $this_field) {
+                    if (isset($this_field['type']) && $this_field['type'] == 'relate'
+                        && isset($this_field['module'])  && $this_field['module'] == 'Currencies'
+                        && isset($this_field['id_name']) && $this_field['id_name'] == 'currency_id') {
+                        // populate related properties manually
+                        $this_property = $this_field['name'];
+                        $currency_property = $this_field['rname'];
+                        $this->$this_property = $currency->$currency_property;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks if Bean has email defs
+     *
+     * @return boolean
+     */
+    public function hasEmails()
+    {
+        if (!empty($this->field_defs['email_addresses']) && $this->field_defs['email_addresses']['type'] == 'link' &&
+            !empty($this->field_defs['email_addresses_non_primary']) && $this->field_defs['email_addresses_non_primary']['type'] == 'email')
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }

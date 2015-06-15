@@ -2,7 +2,7 @@
 if(!defined('sugarEntry') || !sugarEntry) die('Not A Valid Entry Point');
 /*********************************************************************************
  * SugarCRM Community Edition is a customer relationship management program developed by
- * SugarCRM, Inc. Copyright (C) 2004-2012 SugarCRM Inc.
+ * SugarCRM, Inc. Copyright (C) 2004-2013 SugarCRM Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by the
@@ -155,10 +155,10 @@ function checkDBSettings($silent=false) {
                 } else {
                     if($db_selected) {
                         installLog("DB Selected, will reuse {$_SESSION['setup_db_database_name']}");
-                        if($db->tableExists('config') && !$_SESSION['setup_db_drop_tables']) {
+                        if($db->tableExists('config')) {
                            include('sugar_version.php');
                            $versions = $db->getOne("SELECT COUNT(*) FROM config WHERE category='info' AND name='sugar_version' AND VALUE LIKE '$sugar_db_version'");
-                           if($versions != 1 && $silent==false) {
+                           if($versions > 0 && $silent==false) {
                                $errors['ERR_DB_EXISTS_WITH_CONFIG'] = $mod_strings['ERR_DB_EXISTS_WITH_CONFIG'];
                                installLog("ERROR:: {$errors['ERR_DB_EXISTS_WITH_CONFIG']}");
                            }
@@ -242,9 +242,15 @@ function copyInputsIntoSession(){
             if(isset($_REQUEST['setup_db_host_name'])){$_SESSION['setup_db_host_name']              = $_REQUEST['setup_db_host_name'];}
 
             //FTS Support
-            $_SESSION['fts_type'] = isset($_REQUEST['fts_type']) ? $_REQUEST['fts_type'] : "";
-            if(isset($_REQUEST['fts_host'])){$_SESSION['fts_host']              = $_REQUEST['fts_host'];}
-            if(isset($_REQUEST['fts_port'])){$_SESSION['fts_port']              = $_REQUEST['fts_port'];}
+            if (isset($_REQUEST['setup_fts_type'])) {
+                $_SESSION['setup_fts_type'] = $_REQUEST['setup_fts_type'];
+            }
+            if (isset($_REQUEST['setup_fts_host'])) {
+                $_SESSION['setup_fts_host'] = $_REQUEST['setup_fts_host'];
+            }
+            if (isset($_REQUEST['setup_fts_port'])) {
+                $_SESSION['setup_fts_port'] = $_REQUEST['setup_fts_port'];
+            }
 
             if(isset($_SESSION['setup_db_type']) && (!isset($_SESSION['setup_db_manager']) || isset($_REQUEST['setup_db_type']))) {
                 $_SESSION['setup_db_manager'] = DBManagerFactory::getManagerByType($_SESSION['setup_db_type']);
